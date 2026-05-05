@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		E553B6612FA993D1008E34B5 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = E553B6602FA993D1008E34B5 /* Auth */; };
+		E553B6632FA993D1008E34B5 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = E553B6622FA993D1008E34B5 /* PostgREST */; };
+		E553B6652FA993D1008E34B5 /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = E553B6642FA993D1008E34B5 /* Realtime */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		E57595AF2FA94FC20014E526 /* nexo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = nexo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +29,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E553B6652FA993D1008E34B5 /* Realtime in Frameworks */,
+				E553B6632FA993D1008E34B5 /* PostgREST in Frameworks */,
+				E553B6612FA993D1008E34B5 /* Auth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +74,9 @@
 			);
 			name = nexo;
 			packageProductDependencies = (
+				E553B6602FA993D1008E34B5 /* Auth */,
+				E553B6622FA993D1008E34B5 /* PostgREST */,
+				E553B6642FA993D1008E34B5 /* Realtime */,
 			);
 			productName = nexo;
 			productReference = E57595AF2FA94FC20014E526 /* nexo.app */;
@@ -94,6 +106,9 @@
 			);
 			mainGroup = E57595A62FA94FC20014E526;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E553B65F2FA993D1008E34B5 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E57595B02FA94FC20014E526 /* Products */;
 			projectDirPath = "";
@@ -332,6 +347,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		E553B65F2FA993D1008E34B5 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase-community/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E553B6602FA993D1008E34B5 /* Auth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E553B65F2FA993D1008E34B5 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Auth;
+		};
+		E553B6622FA993D1008E34B5 /* PostgREST */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E553B65F2FA993D1008E34B5 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = PostgREST;
+		};
+		E553B6642FA993D1008E34B5 /* Realtime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E553B65F2FA993D1008E34B5 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Realtime;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E57595A72FA94FC20014E526 /* Project object */;
 }
