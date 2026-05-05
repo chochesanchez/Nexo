@@ -35,16 +35,21 @@ struct ScannerView: View {
         .onChange(of: camera.detectedMaterial) { _, mat in if mat != nil { showFicha = true } }
         .fullScreenCover(isPresented: $showFicha) {
             if let mat = camera.detectedMaterial {
-                FichaView(
-                    material    : mat,
-                    ocrText     : camera.detectedOCRText,
-                    imageData   : camera.capturedImageData,
-                    isPresented : $showFicha
-                )
-                .onDisappear {
-                    camera.detectedMaterial  = nil
-                    camera.detectedOCRText   = nil
-                    camera.capturedImageData = nil
+                if mat.classKey == "organic_simple" {
+                    // Flujo especial orgánico con sub-clasificación + timer
+                    OrganicFichaView(material: mat, isPresented: $showFicha)
+                } else {
+                    FichaView(
+                        material    : mat,
+                        ocrText     : camera.detectedOCRText,
+                        imageData   : camera.capturedImageData,
+                        isPresented : $showFicha
+                    )
+                    .onDisappear {
+                        camera.detectedMaterial  = nil
+                        camera.detectedOCRText   = nil
+                        camera.capturedImageData = nil
+                    }
                 }
             }
         }

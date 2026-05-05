@@ -48,6 +48,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		4E50AC332FAA7ABC009FB512 /* Exceptions for "nexo" folder in "nexo" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = E57595AE2FA94FC20014E526 /* nexo */;
+		};
 		4E86795A2FA9A0DD006AC961 /* Exceptions for "NEXOWidget" folder in "NEXOWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -68,6 +75,9 @@
 		};
 		E57595B12FA94FC20014E526 /* nexo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4E50AC332FAA7ABC009FB512 /* Exceptions for "nexo" folder in "nexo" target */,
+			);
 			path = nexo;
 			sourceTree = "<group>";
 		};
@@ -273,6 +283,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NEXOWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NEXOWidget;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "EXO necesita la cámara para identificar residuos.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -305,6 +316,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NEXOWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NEXOWidget;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "EXO necesita la cámara para identificar residuos.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -457,6 +469,8 @@
 				DEVELOPMENT_TEAM = VWUWR4BNBX;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = nexo/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Necesitamos acceso a la cámara para capturar imágenes dentro de la app.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Necesitamos acceso a tu ubicación para actualizar información relevante incluso cuando la app no esté activa.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Necesitamos tu ubicación mientras usas la app para mostrar lugares cercanos y mejorar la navegación.";
@@ -494,6 +508,8 @@
 				DEVELOPMENT_TEAM = VWUWR4BNBX;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = nexo/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Necesitamos acceso a la cámara para capturar imágenes dentro de la app.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Necesitamos acceso a tu ubicación para actualizar información relevante incluso cuando la app no esté activa.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Necesitamos tu ubicación mientras usas la app para mostrar lugares cercanos y mejorar la navegación.";
