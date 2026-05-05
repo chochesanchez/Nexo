@@ -417,6 +417,7 @@ struct FichaView: View {
             lat           : coord.latitude,
             lng           : coord.longitude
         )
+        registro.imageData = imageData
         context.insert(registro)
         try? context.save()    // ← fuerza guardado inmediato
  

@@ -106,6 +106,7 @@ struct ContentView: View {
 
 struct ModoSelectorView: View {
     @Binding var appMode: AppMode
+    @EnvironmentObject private var auth: AuthService
 
     var body: some View {
         ZStack {
@@ -133,6 +134,22 @@ struct ModoSelectorView: View {
                 }
 
                 Spacer()
+
+                Button(role: .destructive) {
+                    Task { await auth.signOut() }
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .font(.system(size: 14, weight: .light))
+                        Text("Cerrar sesión")
+                            .font(.system(size: 15, weight: .regular))
+                    }
+                    .foregroundStyle(.red)
+                    .padding(.horizontal, Sp.lg)
+                    .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+
                 Text("El cambio aplica inmediatamente.")
                     .font(.system(size: 11, weight: .light)).foregroundStyle(Color(uiColor: .secondaryLabel))
                     .padding(.horizontal, Sp.lg).padding(.bottom, 32)

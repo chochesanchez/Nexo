@@ -29,6 +29,7 @@ final class FichaRegistro {
     var lat           : Double
     var lng           : Double
     var supabaseId    : String?  // UUID del listing en Supabase
+    var imageData     : Data?
 
     init(material: NEXOMaterial,
          instruccionFM: String? = nil,
@@ -72,6 +73,7 @@ enum HistorialSegmento: String, CaseIterable {
 
 struct HistorialView: View {
     @EnvironmentObject private var repo: ListingsRepository
+    @EnvironmentObject private var auth: AuthService
     @Environment(\.modelContext) private var context
 
     @Query(sort: \FichaRegistro.fecha, order: .reverse) private var todas: [FichaRegistro]
@@ -416,6 +418,36 @@ struct HistorialView: View {
         var exitosos = 0
 
         for ficha in fichasACompartir {
+            // 1. Upload imagen si existe
+            var imageUrl: String? = nil
+            if let data = ficha.imageData, let userId = auth.currentUserId {
+                imageUrl = try? await StorageService.shared.uploadScanImage(data, userId: userId)
+            }
+
+            // 2. Guardar en scan_history
+            if let userId = auth.currentUserId {
+                let record = NewScanRecord(
+                    userId       : userId,
+                    material     : ficha.displayName,
+                    imageUrl     : imageUrl,
+                    ocrText      : ficha.ocrText,
+                    lat          : ficha.lat,
+                    lng          : ficha.lng,
+                    classKey     : ficha.classKey,
+                    displayName  : ficha.displayName,
+                    icon         : ficha.icon,
+                    route        : ficha.route,
+                    co2          : ficha.co2,
+                    water        : ficha.water,
+                    value        : ficha.value,
+                    smellTip     : nil,
+                    instructions : nil,
+                    fmInstruction: ficha.instruccionFM
+                )
+                await repo.insertScanRecord(record)
+            }
+
+            // 3. Publicar en mapa
             let nuevo = NewListing(
                 material      : ficha.displayName,
                 quantityLabel : "1 unidad",
@@ -656,5 +688,6 @@ struct RecogidaRow: View {
 #Preview("Historial") {
     HistorialView()
         .environmentObject(ListingsRepository())
+        .environmentObject(AuthService.shared)
         .modelContainer(for: FichaRegistro.self, inMemory: true)
 }

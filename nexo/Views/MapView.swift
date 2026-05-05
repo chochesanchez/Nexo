@@ -109,6 +109,11 @@ struct MapView: View {
                         }
                     }
                 }
+                ForEach(CentroAcopio.cdmxAll) { centro in
+                    Annotation(centro.nombre, coordinate: centro.coordinate) {
+                        PuntoReciclajePin(centro: centro)
+                    }
+                }
                 UserAnnotation()
             }
             .ignoresSafeArea()

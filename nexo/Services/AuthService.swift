@@ -89,7 +89,11 @@ final class AuthService: ObservableObject {
 
             var uploadedAvatarUrl: String? = nil
             if let data = avatarData {
-                uploadedAvatarUrl = try? await StorageService.shared.uploadAvatar(data, userId: user.id)
+                do {
+                    uploadedAvatarUrl = try await StorageService.shared.uploadAvatar(data, userId: user.id)
+                } catch {
+                    print("[Auth] avatar upload failed:", error.localizedDescription)
+                }
             }
 
             let params = UpsertProfileParams(
