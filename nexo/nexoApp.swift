@@ -3,12 +3,16 @@ import SwiftData
 
 @main
 struct nexoApp: App {
-    @StateObject private var auth = AuthService.shared
+    @StateObject private var auth     = AuthService.shared
+    @StateObject private var repo     = ListingsRepository()
+    @StateObject private var location = LocationManager.shared
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(auth)
+                .environmentObject(repo)
+                .environmentObject(location)
         }
         .modelContainer(for: FichaRegistro.self)
     }

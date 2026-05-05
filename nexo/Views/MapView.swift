@@ -2,12 +2,12 @@ import SwiftUI
 import MapKit
 
 struct FichaPin: Identifiable {
-    let id        = UUID()
-    let coordinate: CLLocationCoordinate2D
-    let material  : NEXOMaterial
+    let id         = UUID()
+    let coordinate : CLLocationCoordinate2D
+    let material   : NEXOMaterial
 }
 
-private func mockPins() -> [FichaPin] {
+func mockPins() -> [FichaPin] {          // internal (sin private) para que RecolectorView pueda usarlo
     let base = CLLocationCoordinate2D(latitude: 19.4326, longitude: -99.1332)
     let offsets: [(Double, Double, String)] = [
         ( 0.003, -0.004, "pet_bottle"),
@@ -19,13 +19,17 @@ private func mockPins() -> [FichaPin] {
     ]
     return offsets.compactMap { (dlat, dlon, key) in
         guard let mat = NEXOMaterial.all[key] else { return nil }
-        return FichaPin(coordinate: CLLocationCoordinate2D(latitude: base.latitude + dlat, longitude: base.longitude + dlon), material: mat)
+        return FichaPin(
+            coordinate: CLLocationCoordinate2D(latitude: base.latitude + dlat,
+                                              longitude: base.longitude + dlon),
+            material: mat
+        )
     }
 }
 
 struct MapView: View {
-    var listings   : [Listing] = []
-    var isLoading  : Bool      = false
+    var listings  : [Listing] = []
+    var isLoading : Bool      = false
 
     @State private var position: MapCameraPosition = .region(
         MKCoordinateRegion(
@@ -34,13 +38,16 @@ struct MapView: View {
         )
     )
     @State private var selectedPin: FichaPin? = nil
-    @State private var showFicha  = false
+    @State private var showFicha              = false
 
     private var pins: [FichaPin] {
         if listings.isEmpty { return mockPins() }
         return listings.compactMap { listing in
             guard let mat = NEXOMaterial.from(supabaseMaterial: listing.material) else { return nil }
-            return FichaPin(coordinate: CLLocationCoordinate2D(latitude: listing.lat, longitude: listing.lng), material: mat)
+            return FichaPin(
+                coordinate: CLLocationCoordinate2D(latitude: listing.lat, longitude: listing.lng),
+                material: mat
+            )
         }
     }
 
@@ -62,7 +69,11 @@ struct MapView: View {
         .ignoresSafeArea(edges: .top)
         .sheet(isPresented: $showFicha) {
             if let pin = selectedPin {
-                FichaView(material: pin.material, isPresented: $showFicha)
+                FichaView(
+                    material    : pin.material,
+                    ocrText     : nil,          // ← fix: parámetro requerido
+                    isPresented : $showFicha
+                )
             }
         }
     }
@@ -71,7 +82,8 @@ struct MapView: View {
         VStack(spacing: 0) {
             HStack {
                 Text(listings.isEmpty ? "Fichas de ejemplo" : "Fichas disponibles")
-                    .font(.system(size: 17, weight: .bold, design: .rounded)).foregroundStyle(.primary)
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .foregroundStyle(.primary)
                 Spacer()
                 if isLoading {
                     ProgressView().tint(Color.nexoGreen)
@@ -89,8 +101,8 @@ struct MapView: View {
 }
 
 struct PinView: View {
-    let material: NEXOMaterial
-    let onTap   : () -> Void
+    let material : NEXOMaterial
+    let onTap    : () -> Void
     @State private var pressed = false
 
     var body: some View {
@@ -99,10 +111,11 @@ struct PinView: View {
                 ZStack {
                     Circle().fill(material.accent).frame(width: 40, height: 40)
                         .shadow(color: material.accent.opacity(0.4), radius: 6, y: 3)
-                    Image(systemName: material.icon).font(.system(size: 18, weight: .semibold)).foregroundStyle(.white)
+                    Image(systemName: material.icon)
+                        .font(.system(size: 18, weight: .semibold)).foregroundStyle(.white)
                 }
-                Image(systemName: "arrowtriangle.down.fill").font(.system(size: 8))
-                    .foregroundStyle(material.accent).offset(y: -3)
+                Image(systemName: "arrowtriangle.down.fill")
+                    .font(.system(size: 8)).foregroundStyle(material.accent).offset(y: -3)
             }
         }
         .scaleEffect(pressed ? 0.88 : 1).animation(.spring(response: 0.25), value: pressed)

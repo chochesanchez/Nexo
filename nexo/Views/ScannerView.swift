@@ -3,22 +3,24 @@ import AVFoundation
 
 struct ScannerView: View {
     @Binding var appMode: AppMode
-    @StateObject private var camera  = CameraManager()
-    @State private var showFicha     = false
-    @State private var pulse         = false
+    @StateObject private var camera = CameraManager()
+    @State private var showFicha    = false
+    @State private var pulse        = false
     @State private var btnScale: CGFloat = 1
 
     var body: some View {
         ZStack {
             CameraPreview(session: camera.session).ignoresSafeArea()
             VStack {
-                LinearGradient(colors: [.black.opacity(0.55), .clear], startPoint: .top, endPoint: .bottom)
+                LinearGradient(colors: [.black.opacity(0.55), .clear],
+                               startPoint: .top, endPoint: .bottom)
                     .frame(height: 160)
                 Spacer()
             }.ignoresSafeArea()
             VStack {
                 Spacer()
-                LinearGradient(colors: [.clear, .black.opacity(0.55)], startPoint: .top, endPoint: .bottom)
+                LinearGradient(colors: [.clear, .black.opacity(0.55)],
+                               startPoint: .top, endPoint: .bottom)
                     .frame(height: 240)
             }.ignoresSafeArea()
             VStack(spacing: 0) {
@@ -29,16 +31,24 @@ struct ScannerView: View {
                 bottomCard
             }
         }
-        .onAppear  { camera.start() }
+        .onAppear   { camera.start() }
         .onDisappear { camera.stop() }
         .onChange(of: camera.detectedMaterial) { _, mat in if mat != nil { showFicha = true } }
         .fullScreenCover(isPresented: $showFicha) {
             if let mat = camera.detectedMaterial {
-                FichaView(material: mat, isPresented: $showFicha)
-                    .onDisappear { camera.detectedMaterial = nil }
+                FichaView(
+                    material    : mat,
+                    ocrText     : camera.detectedOCRText,
+                    isPresented : $showFicha
+                )
+                .onDisappear {
+                    camera.detectedMaterial = nil
+                    camera.detectedOCRText  = nil
+                }
             }
         }
-        .alert("Intenta de nuevo", isPresented: .constant(camera.errorMessage != nil)) {
+        .alert("Intenta de nuevo",
+               isPresented: .constant(camera.errorMessage != nil)) {
             Button("OK") { camera.errorMessage = nil }
         } message: { Text(camera.errorMessage ?? "") }
     }
@@ -84,7 +94,9 @@ struct ScannerView: View {
                     .overlay {
                         VStack(spacing: 14) {
                             ProgressView().tint(.white).scaleEffect(1.4)
-                            Text("Analizando…").font(.system(size: 15, weight: .medium)).foregroundStyle(.white)
+                            Text("Analizando…")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(.white)
                         }
                     }
             }
@@ -111,7 +123,8 @@ struct ScannerView: View {
                     Circle().fill(Color.nexoAmber).frame(width: 76, height: 76)
                         .shadow(color: .nexoAmber.opacity(0.45), radius: 18, y: 6)
                     Image(systemName: camera.isAnalyzing ? "hourglass" : "viewfinder")
-                        .font(.system(size: 30, weight: .semibold)).foregroundStyle(Color.nexoDeep)
+                        .font(.system(size: 30, weight: .semibold))
+                        .foregroundStyle(Color.nexoDeep)
                 }
             }
             .scaleEffect(btnScale).disabled(camera.isAnalyzing)
@@ -127,14 +140,15 @@ struct CornerFrame: View {
         Canvas { ctx, sz in
             let w = sz.width, h = sz.height, c = cornerLen
             let corners: [(CGPoint, CGPoint, CGPoint)] = [
-                (CGPoint(x: 0, y: c),   CGPoint(x: 0, y: 0),   CGPoint(x: c, y: 0)),
-                (CGPoint(x: w-c, y: 0), CGPoint(x: w, y: 0),   CGPoint(x: w, y: c)),
-                (CGPoint(x: 0, y: h-c), CGPoint(x: 0, y: h),   CGPoint(x: c, y: h)),
-                (CGPoint(x: w-c, y: h), CGPoint(x: w, y: h),   CGPoint(x: w, y: h-c)),
+                (CGPoint(x: 0,   y: c),   CGPoint(x: 0, y: 0),   CGPoint(x: c,   y: 0)),
+                (CGPoint(x: w-c, y: 0),   CGPoint(x: w, y: 0),   CGPoint(x: w,   y: c)),
+                (CGPoint(x: 0,   y: h-c), CGPoint(x: 0, y: h),   CGPoint(x: c,   y: h)),
+                (CGPoint(x: w-c, y: h),   CGPoint(x: w, y: h),   CGPoint(x: w,   y: h-c)),
             ]
             for (a, b, cc) in corners {
                 var p = Path(); p.move(to: a); p.addLine(to: b); p.addLine(to: cc)
-                ctx.stroke(p, with: .color(color), style: StrokeStyle(lineWidth: lw, lineCap: .round, lineJoin: .round))
+                ctx.stroke(p, with: .color(color),
+                           style: StrokeStyle(lineWidth: lw, lineCap: .round, lineJoin: .round))
             }
         }
         .frame(width: size, height: size)
