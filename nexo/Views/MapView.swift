@@ -124,3 +124,6 @@ struct PinView: View {
         .accessibilityLabel("\(material.displayName) disponible. Toca para ver la ficha.")
     }
 }
+#Preview("Mapa con fichas de ejemplo") {
+    MapView()
+}

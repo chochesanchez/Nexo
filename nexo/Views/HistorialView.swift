@@ -228,3 +228,8 @@ struct HistorialView: View {
         return total >= 1000 ? String(format: "%.1f kg", total / 1000) : "\(Int(total)) g"
     }
 }
+#Preview("Historial vacío") {
+    HistorialView()
+        .environmentObject(ListingsRepository())
+        .modelContainer(for: FichaRegistro.self, inMemory: true)
+}

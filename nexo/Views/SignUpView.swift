@@ -217,9 +217,4 @@ struct RoundedCorner: Shape {
     }
 }
 
-#Preview {
-    NavigationStack {
-        SignUpView()
-            .environmentObject(AuthService.shared)
-    }
-}
+

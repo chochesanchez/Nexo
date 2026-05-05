@@ -448,3 +448,11 @@ extension Array {
         indices.contains(index) ? self[index] : nil
     }
 }
+
+#Preview("Recolector") {
+    RecolectorView(
+        listings: [],
+        isLoading: false
+    )
+    .environmentObject(ListingsRepository())
+}

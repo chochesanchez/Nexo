@@ -30,7 +30,7 @@ struct ExplainView: View {
                 }
                 .padding(.horizontal, Sp.lg)
                 .padding(.bottom, Sp.sm)
-                .padding(.top, 60) // empuja el texto debajo del Dynamic Island
+                .padding(.top, 60)
             }
 
             WaveShape()
