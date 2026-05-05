@@ -4,11 +4,12 @@
 //
 //  Created by José Manuel Sánchez Pérez on 04/05/26.
 // ContentView.swift — Rediseño Bateman/Apple
+// ContentView.swift — Light mode, ModoSelectorView con cerrar sesión restaurado
 import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @State private var selectedTab : Int     = 0
+    @State private var selectedTab: Int = 0
     @State private var appMode: AppMode = {
         let saved = UserDefaults.standard.string(forKey: "nexoRole")
         return saved == "recolector" ? .recolector : .hogar
@@ -53,7 +54,7 @@ struct ContentView: View {
 
             modoToggleTab
         }
-        .tint(Color.nexoBlack)
+        .tint(Color.nexoBrand)
     }
 
     private var recolectorTabs: some View {
@@ -65,115 +66,129 @@ struct ContentView: View {
 
             modoToggleTab
         }
-        .tint(Color.nexoAmber)
+        .tint(Color.nexoBrand)
     }
 
     private var modoToggleTab: some View {
         ModoSelectorView(appMode: $appMode)
             .tabItem {
                 Label(
-                    appMode == .hogar ? "Recolector" : "Hogar",
-                    systemImage: appMode == .hogar ? "figure.walk" : "house"
+                    appMode == .hogar ? "Ajustes" : "Ajustes",
+                    systemImage: "gearshape"
                 )
             }
             .tag(99)
     }
 }
 
-// MARK: - Selector de modo — rediseñado
+// MARK: - ModoSelectorView — light mode Apple Settings style + cerrar sesión
 struct ModoSelectorView: View {
     @Binding var appMode: AppMode
+    @EnvironmentObject private var auth: AuthService
 
     var body: some View {
-        ZStack {
-            Color(uiColor: .systemBackground).ignoresSafeArea()
-
-            VStack(alignment: .leading, spacing: 0) {
-                // Header
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Modo")
-                        .font(.system(size: 9, weight: .semibold))
-                        .tracking(2.5)
-                        .textCase(.uppercase)
-                        .foregroundStyle(Color.secondary)
-                    Text("¿Cómo usas\nNEXO ahora?")
-                        .font(.system(size: 32, weight: .black))
-                        .tracking(-2)
-                        .lineSpacing(2)
-                }
-                .padding(.top, 48)
-                .padding(.horizontal, Sp.lg)
-                .padding(.bottom, 32)
-
-                // Regla
-                Rectangle()
-                    .fill(Color.primary.opacity(0.06))
-                    .frame(height: 0.5)
-
-                // Opciones
-                VStack(spacing: 0) {
+        NavigationStack {
+            List {
+                // MARK: Modo actual
+                Section {
                     modoRow(
                         mode : .hogar,
-                        icon : "house",
-                        desc : "Escanea, prepara y comparte residuos",
-                        isOn : appMode == .hogar
+                        icon : "house.fill",
+                        color: Color.nexoBrand,
+                        desc : "Escaneo, fichas e historial de impacto"
                     )
-                    Rectangle().fill(Color.primary.opacity(0.06)).frame(height: 0.5)
                     modoRow(
                         mode : .recolector,
                         icon : "figure.walk",
-                        desc : "Encuentra materiales en tu ruta",
-                        isOn : appMode == .recolector
+                        color: Color.nexoBrand,
+                        desc : "Mapa de fichas, voz y confirmación de recolección"
                     )
-                    Rectangle().fill(Color.primary.opacity(0.06)).frame(height: 0.5)
+                } header: {
+                    Text("Modo de uso")
                 }
 
-                Spacer()
+                // MARK: Cuenta
+                Section {
+                    // Info de usuario si está disponible
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.nexoMint)
+                                .frame(width: 40, height: 40)
+                            Image(systemName: "person")
+                                .font(.system(size: 16, weight: .light))
+                                .foregroundStyle(Color.nexoBrand)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Mi cuenta")
+                                .font(.system(size: 15, weight: .medium))
+                            Text(auth.currentUserId != nil ? "Sesión activa" : "No has iniciado sesión")
+                                .font(.system(size: 12))
+                                .foregroundStyle(Color(uiColor: .secondaryLabel))
+                        }
+                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("Cuenta")
+                }
 
-                // Nota
-                Text("El cambio aplica inmediatamente.")
-                    .font(.system(size: 11, weight: .light))
-                    .foregroundStyle(Color.secondary)
-                    .padding(.horizontal, Sp.lg)
-                    .padding(.bottom, 32)
+                // MARK: Cerrar sesión — restaurado
+                Section {
+                    Button(role: .destructive) {
+                        Task { await auth.signOut() }
+                    } label: {
+                        HStack {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                                .frame(width: 20)
+                            Text("Cerrar sesión")
+                        }
+                        .font(.system(size: 15, weight: .regular))
+                    }
+                }
             }
+            .listStyle(.insetGrouped)
+            .navigationTitle("NEXO")
+            .navigationBarTitleDisplayMode(.large)
+            .tint(Color.nexoBrand)
         }
     }
 
-    private func modoRow(mode: AppMode, icon: String, desc: String, isOn: Bool) -> some View {
+    private func modoRow(mode: AppMode, icon: String, color: Color, desc: String) -> some View {
         Button {
             withAnimation(.easeOut(duration: 0.2)) { appMode = mode }
             UserDefaults.standard.set(mode == .hogar ? "hogar" : "recolector", forKey: "nexoRole")
         } label: {
-            HStack(spacing: Sp.md) {
-                Image(systemName: isOn ? icon + ".fill" : icon)
-                    .font(.system(size: 15, weight: .regular))
-                    .foregroundStyle(isOn ? Color.primary : Color.secondary)
-                    .frame(width: 24)
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(appMode == mode ? Color.nexoMint : Color(uiColor: .systemGray6))
+                        .frame(width: 32, height: 32)
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(appMode == mode ? Color.nexoBrand : Color(uiColor: .secondaryLabel))
+                }
 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(mode.rawValue)
-                        .font(.system(size: 16, weight: isOn ? .semibold : .regular))
-                        .foregroundStyle(isOn ? Color.primary : Color.secondary)
+                        .font(.system(size: 15, weight: appMode == mode ? .semibold : .regular))
+                        .foregroundStyle(Color(uiColor: .label))
                     Text(desc)
-                        .font(.system(size: 12, weight: .light))
-                        .foregroundStyle(Color.secondary)
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color(uiColor: .secondaryLabel))
                 }
 
                 Spacer()
 
-                if isOn {
+                if appMode == mode {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.primary)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color.nexoBrand)
                 }
             }
-            .padding(.horizontal, Sp.lg)
-            .padding(.vertical, 18)
-            .background(isOn ? Color.primary.opacity(0.03) : Color.clear)
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Cambiar a \(mode.rawValue)")
     }
 }
 

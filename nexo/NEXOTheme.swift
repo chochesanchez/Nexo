@@ -1,16 +1,23 @@
 // NEXOTheme.swift
 // Design tokens: colores, espaciado y radios para toda la app.
 
+// NEXOTheme.swift
 import SwiftUI
 
 extension Color {
+    // Brand — verde corporativo, no playful
+    static let nexoForest  = Color(hex: "0A3D2E")   // deep forest — logos, primary buttons
+    static let nexoBrand   = Color(hex: "1B6B45")   // brand green — accents, icons
+    static let nexoMint    = Color(hex: "E8F5EE")   // light green tint — selected states
+    static let nexoGreen   = Color(hex: "45B15B")   // señales, dots, badges
+    static let nexoAmber   = Color(hex: "FACF00")   // reservado solo para el scanner CTA
+
+    // Legacy aliases (compatibilidad con NEXOMaterial y otros archivos)
+    static let nexoDark    = Color(hex: "0A3D2E")
+    static let nexoDeep    = Color(hex: "0A3D2E")
     static let nexoBlack   = Color(hex: "0A0A0A")
-    static let nexoDeep    = Color(hex: "0D2B27")
-    static let nexoSurface = Color(hex: "F5F5F3")
-    static let nexoGreen   = Color(hex: "45B15B")
-    static let nexoAmber   = Color(hex: "FACF00")
     static let nexoBlue    = Color(hex: "006D8F")
-    static let nexoDark    = Color(hex: "0A0A0A")  // legacy alias
+    static let nexoSurface = Color(hex: "F7FBF9")
 
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: .alphanumerics.inverted)
@@ -34,8 +41,9 @@ enum Sp {
 
 enum Rd {
     static let xs:   CGFloat =  4
-    static let sm:   CGFloat =  6
-    static let md:   CGFloat = 10
-    static let lg:   CGFloat = 14
+    static let sm:   CGFloat =  8
+    static let md:   CGFloat = 14
+    static let lg:   CGFloat = 20
+    static let xl:   CGFloat = 28
     static let pill: CGFloat = 100
 }
