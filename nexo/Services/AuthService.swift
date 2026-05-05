@@ -28,10 +28,10 @@ final class AuthService: ObservableObject {
     errorMessage = nil
     do {
         let response = try await client.auth.signUp(email: email, password: password)
-        let user = response.user
-        try await client.auth.update(user: UserAttributes(data: [
-            "full_name": AnyJSON(stringLiteral: "\(nombre) \(apellido)")
-        ]))
+        guard let user = response.user else {
+            errorMessage = "No se pudo crear la cuenta. Intenta de nuevo."
+            return
+        }
         let profile = NewProfile(userId: user.id, nombre: nombre, apellido: apellido, telefono: telefono, correo: email, edad: edad)
         try await client.from("profiles").insert(profile).execute()
         isAuthenticated = response.session != nil
@@ -40,6 +40,7 @@ final class AuthService: ObservableObject {
         print("[Auth] signUp:", error)
     }
 }
+
 
 
 
