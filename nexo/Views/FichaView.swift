@@ -400,16 +400,16 @@ struct FichaView: View {
     }
 
     // MARK: - Guardar en SwiftData como pendiente
-
+ 
     private func guardarFicha() {
         guard !guardada else { return }
         isGuardando = true
         speech.stop()
-
+ 
         let coord = location.anonymizedCoordinate
                  ?? location.coordinate
                  ?? CLLocationCoordinate2D(latitude: 19.4326, longitude: -99.1332)
-
+ 
         let registro = FichaRegistro(
             material      : material,
             instruccionFM : instruccionFM,
@@ -418,15 +418,17 @@ struct FichaView: View {
             lng           : coord.longitude
         )
         context.insert(registro)
-
+        try? context.save()    // ← fuerza guardado inmediato
+ 
         isGuardando = false
         guardada    = true
         withAnimation(.easeOut(duration: 0.2)) { showSuccess = true }
     }
-
+ 
     private var voiceText: String {
         let base = instruccionFM ?? material.voiceText
         let tip  = material.smellTip.map { " \($0)" } ?? ""
         return "\(material.displayName). \(base)\(tip) Valor estimado: \(material.value)."
     }
 }
+ 
