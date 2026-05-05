@@ -1,4 +1,4 @@
-// ContentView.swift — Modo Empresa con tab de Historial
+// ContentView.swift
 
 import SwiftUI
 import SwiftData
@@ -43,7 +43,7 @@ struct ContentView: View {
 
     private var hogarTabs: some View {
         TabView(selection: $selectedTab) {
-            ScannerView(appMode: $appMode)
+            ScannerView(appMode: $appMode, scannerContext: .hogar)
                 .tabItem { Label("Escanear", systemImage: "viewfinder") }.tag(0)
 
             MapView(listings: repo.listings, isLoading: repo.isLoading)
@@ -68,24 +68,31 @@ struct ContentView: View {
 
             modoToggleTab
         }
-        .tint(Color.nexoAmber)
+        .tint(Color.nexoGreen)
     }
 
-    // MARK: - Empresa (3 tabs: Publicar · Historial · Mapa)
+    // MARK: - Empresa — 4 tabs: Escanear · Publicar · Mis lotes · Mapa
 
     private var empresaTabs: some View {
         TabView(selection: $selectedTab) {
+            // Tab 0 — Scanner en contexto empresa: esquinas verdes, pre-llena EmpresaView
+            ScannerView(appMode: $appMode, scannerContext: .empresa)
+                .tabItem { Label("Escanear", systemImage: "viewfinder") }.tag(0)
+
+            // Tab 1 — Publicar lote manualmente (flujo completo de 2 pasos)
             EmpresaView()
-                .tabItem { Label("Publicar lote", systemImage: "shippingbox") }.tag(0)
+                .tabItem { Label("Publicar", systemImage: "shippingbox") }.tag(1)
 
+            // Tab 2 — Historial de lotes
             HistorialEmpresaView()
-                .tabItem { Label("Mis lotes", systemImage: "clock") }.tag(1)
+                .tabItem { Label("Mis lotes", systemImage: "clock") }.tag(2)
 
+            // Tab 3 — Mapa filtrado solo lotes de empresa
             MapView(
                 listings: repo.listings.filter { $0.notes?.contains("Tipo:") ?? false },
                 isLoading: repo.isLoading
             )
-            .tabItem { Label("Mapa", systemImage: "map") }.tag(2)
+            .tabItem { Label("Mapa", systemImage: "map") }.tag(3)
             .task { await repo.fetchAvailable() }
 
             modoToggleTab
@@ -212,28 +219,12 @@ struct ModoSelectorView: View {
                 .padding(.horizontal, Sp.lg)
 
             if fichas.isEmpty {
-                emptyStatsCard
-                    .padding(.horizontal, Sp.lg)
+                emptyStatsCard.padding(.horizontal, Sp.lg)
             } else {
                 HStack(spacing: 10) {
-                    statCard(
-                        icon: "viewfinder",
-                        label: "Escaneos",
-                        value: "\(fichas.count)",
-                        color: Color.nexoForest
-                    )
-                    statCard(
-                        icon: "wind",
-                        label: "CO₂ evitado",
-                        value: co2Total,
-                        color: Color.nexoBrand
-                    )
-                    statCard(
-                        icon: "drop.fill",
-                        label: "Agua",
-                        value: aguaTotal,
-                        color: Color.nexoBlue
-                    )
+                    statCard(icon: "viewfinder",  label: "Escaneos",    value: "\(fichas.count)", color: Color.nexoForest)
+                    statCard(icon: "wind",         label: "CO₂ evitado", value: co2Total,          color: Color.nexoBrand)
+                    statCard(icon: "drop.fill",    label: "Agua",        value: aguaTotal,          color: Color.nexoBlue)
                 }
                 .padding(.horizontal, Sp.lg)
             }
@@ -246,11 +237,8 @@ struct ModoSelectorView: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(color)
             Text(value)
-                .font(.system(size: 18, weight: .bold))
-                .tracking(-0.4)
-                .foregroundStyle(Color(uiColor: .label))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .font(.system(size: 18, weight: .bold)).tracking(-0.4)
+                .foregroundStyle(Color(uiColor: .label)).lineLimit(1).minimumScaleFactor(0.7)
             Text(label)
                 .font(.system(size: 10, weight: .regular))
                 .foregroundStyle(Color(uiColor: .secondaryLabel))
@@ -271,8 +259,7 @@ struct ModoSelectorView: View {
                 .foregroundStyle(Color(uiColor: .label))
             Text("Escanea tu primer residuo para ver tu impacto.")
                 .font(.system(size: 12, weight: .light))
-                .foregroundStyle(Color(uiColor: .secondaryLabel))
-                .lineSpacing(2)
+                .foregroundStyle(Color(uiColor: .secondaryLabel)).lineSpacing(2)
             Button {
                 NotificationCenter.default.post(name: .nexoOpenScanner, object: nil)
             } label: {
@@ -313,25 +300,19 @@ struct ModoSelectorView: View {
         } label: {
             HStack(spacing: 12) {
                 ZStack {
-                    Circle()
-                        .fill(Color.nexoForest.opacity(0.1))
-                        .frame(width: 36, height: 36)
+                    Circle().fill(Color.nexoForest.opacity(0.1)).frame(width: 36, height: 36)
                     Image(systemName: "chart.line.uptrend.xyaxis")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.nexoForest)
+                        .font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.nexoForest)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Ver mi impacto")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color(uiColor: .label))
+                        .font(.system(size: 14, weight: .semibold)).foregroundStyle(Color(uiColor: .label))
                     Text("Historial completo de escaneos")
-                        .font(.system(size: 11, weight: .light))
-                        .foregroundStyle(Color(uiColor: .secondaryLabel))
+                        .font(.system(size: 11, weight: .light)).foregroundStyle(Color(uiColor: .secondaryLabel))
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color(uiColor: .tertiaryLabel))
+                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(Color(uiColor: .tertiaryLabel))
             }
             .padding(14)
             .background(Color(uiColor: .systemBackground), in: RoundedRectangle(cornerRadius: Rd.lg))
@@ -346,13 +327,11 @@ struct ModoSelectorView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Modo de uso de NEXO")
                     .font(.system(size: 11, weight: .semibold))
-                    .tracking(0.5)
-                    .textCase(.uppercase)
+                    .tracking(0.5).textCase(.uppercase)
                     .foregroundStyle(Color(uiColor: .secondaryLabel))
                 Text("Elige cómo quieres usar la app. Puedes cambiarlo cuando quieras.")
                     .font(.system(size: 12, weight: .light))
-                    .foregroundStyle(Color(uiColor: .tertiaryLabel))
-                    .padding(.bottom, 4)
+                    .foregroundStyle(Color(uiColor: .tertiaryLabel)).padding(.bottom, 4)
             }
             .padding(.horizontal, Sp.lg)
 
@@ -373,8 +352,7 @@ struct ModoSelectorView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Cuenta")
                 .font(.system(size: 11, weight: .semibold))
-                .tracking(0.5)
-                .textCase(.uppercase)
+                .tracking(0.5).textCase(.uppercase)
                 .foregroundStyle(Color(uiColor: .secondaryLabel))
                 .padding(.horizontal, Sp.lg)
 
@@ -384,15 +362,12 @@ struct ModoSelectorView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
                         .font(.system(size: 14, weight: .regular))
-                        .foregroundStyle(.red)
-                        .frame(width: 24)
+                        .foregroundStyle(.red).frame(width: 24)
                     Text("Cerrar sesión")
-                        .font(.system(size: 15, weight: .regular))
-                        .foregroundStyle(.red)
+                        .font(.system(size: 15, weight: .regular)).foregroundStyle(.red)
                     Spacer()
                 }
-                .padding(.horizontal, Sp.lg)
-                .padding(.vertical, 16)
+                .padding(.horizontal, Sp.lg).padding(.vertical, 16)
                 .background(Color(uiColor: .systemBackground), in: RoundedRectangle(cornerRadius: Rd.lg))
                 .overlay(RoundedRectangle(cornerRadius: Rd.lg).strokeBorder(Color(uiColor: .separator), lineWidth: 0.5))
             }
@@ -400,6 +375,8 @@ struct ModoSelectorView: View {
             .padding(.horizontal, Sp.lg)
         }
     }
+
+    // MARK: - Rows de modo
 
     private func modoRow(mode: AppMode, icon: String, desc: String, isOn: Bool) -> some View {
         Button {

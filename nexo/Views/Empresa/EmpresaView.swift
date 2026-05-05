@@ -5,6 +5,9 @@
 //  Created by Grecia Saucedo on 05/05/26.
 //
 
+// EmpresaView.swift
+// Agrega parámetro preselectedMaterial para el flujo de scanner.
+
 import SwiftUI
 import CoreLocation
 import SwiftData
@@ -14,6 +17,10 @@ struct EmpresaView: View {
     @EnvironmentObject private var location : LocationManager
     @EnvironmentObject private var auth     : AuthService
     @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
+
+    /// Material pre-llenado desde el scanner. Cuando se pasa, arranca en step 1.
+    var preselectedMaterial: NEXOMaterial? = nil
 
     @State private var selectedMaterial : NEXOMaterial?        = nil
     @State private var kgText           : String               = ""
@@ -69,6 +76,11 @@ struct EmpresaView: View {
             }
         }
         .onAppear {
+            // Si viene del scanner, pre-llenar y saltar al step 1
+            if let mat = preselectedMaterial {
+                selectedMaterial = mat
+                step = 1
+            }
             withAnimation(.easeOut(duration: 0.4).delay(0.1)) { contentIn = true }
             location.startUpdating()
         }
@@ -82,10 +94,22 @@ struct EmpresaView: View {
     private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("EMPRESA")
-                    .font(.system(size: 10, weight: .semibold))
-                    .tracking(2).textCase(.uppercase)
-                    .foregroundStyle(Color.nexoBrand.opacity(0.5))
+                // Si viene del scanner, muestra el origen
+                if preselectedMaterial != nil && step == 1 {
+                    HStack(spacing: 5) {
+                        Image(systemName: "viewfinder")
+                            .font(.system(size: 9, weight: .semibold))
+                        Text("DETECTADO POR ESCÁNER")
+                            .font(.system(size: 9, weight: .semibold))
+                            .tracking(1.5)
+                    }
+                    .foregroundStyle(Color.nexoBrand.opacity(0.6))
+                } else {
+                    Text("EMPRESA")
+                        .font(.system(size: 10, weight: .semibold))
+                        .tracking(2).textCase(.uppercase)
+                        .foregroundStyle(Color.nexoBrand.opacity(0.5))
+                }
                 Text(stepTitle)
                     .font(.system(size: 28, weight: .bold))
                     .tracking(-1).foregroundStyle(Color.nexoForest)
@@ -93,7 +117,19 @@ struct EmpresaView: View {
                     .animation(.easeOut(duration: 0.2), value: step)
             }
             Spacer()
-            if step < 2 {
+
+            // Si viene como sheet desde scanner, mostrar botón cerrar
+            if preselectedMaterial != nil && step < 2 {
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color(uiColor: .secondaryLabel))
+                        .frame(width: 30, height: 30)
+                        .background(Color(uiColor: .systemGray5), in: Circle())
+                }
+                .padding(.top, 4)
+            } else if step < 2 {
+                // Dots de progreso solo cuando no viene del scanner (para no confundir)
                 HStack(spacing: 6) {
                     ForEach(0..<2, id: \.self) { i in
                         RoundedRectangle(cornerRadius: 2)
@@ -117,7 +153,7 @@ struct EmpresaView: View {
         }
     }
 
-    // MARK: - Step 0: Material + tipo de generador
+    // MARK: - Step 0: Material + tipo
 
     private var materialStep: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -125,23 +161,18 @@ struct EmpresaView: View {
                 .padding(.horizontal, Sp.lg).padding(.top, 24).padding(.bottom, 12)
 
             VStack(spacing: 8) {
-                ForEach(materials) { mat in
-                    materialCard(mat)
-                }
+                ForEach(materials) { mat in materialCard(mat) }
             }
             .padding(.horizontal, Sp.lg)
 
             sectionLabel("Tu tipo de negocio")
                 .padding(.horizontal, Sp.lg).padding(.top, 28).padding(.bottom, 12)
 
-            // ForEach con id explícito para evitar "Generic parameter C could not be inferred"
             LazyVGrid(
                 columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())],
                 spacing: 8
             ) {
-                ForEach(TipoGenerador.allCases, id: \.rawValue) { tipo in
-                    generadorChip(tipo)
-                }
+                ForEach(TipoGenerador.allCases, id: \.rawValue) { tipo in generadorChip(tipo) }
             }
             .padding(.horizontal, Sp.lg)
         }
@@ -168,28 +199,21 @@ struct EmpresaView: View {
                 Spacer()
                 Text(mat.value)
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Color(hex: "9A7800"))
-                    .multilineTextAlignment(.trailing).frame(maxWidth: 72)
+                    .foregroundStyle(Color(hex: "9A7800")).multilineTextAlignment(.trailing).frame(maxWidth: 72)
                 ZStack {
-                    Circle()
-                        .strokeBorder(
-                            isOn ? Color.nexoForest : Color(uiColor: .separator),
-                            lineWidth: isOn ? 1.5 : 0.5
-                        )
-                        .frame(width: 20, height: 20)
-                    if isOn {
-                        Circle().fill(Color.nexoForest).frame(width: 10, height: 10)
-                    }
+                    Circle().strokeBorder(
+                        isOn ? Color.nexoForest : Color(uiColor: .separator),
+                        lineWidth: isOn ? 1.5 : 0.5
+                    ).frame(width: 20, height: 20)
+                    if isOn { Circle().fill(Color.nexoForest).frame(width: 10, height: 10) }
                 }
             }
             .padding(.horizontal, Sp.md).padding(.vertical, 14)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Rd.md))
-            .overlay(
-                RoundedRectangle(cornerRadius: Rd.md).strokeBorder(
-                    isOn ? Color.nexoForest.opacity(0.3) : Color.nexoForest.opacity(0.07),
-                    lineWidth: isOn ? 1 : 0.5
-                )
-            )
+            .overlay(RoundedRectangle(cornerRadius: Rd.md).strokeBorder(
+                isOn ? Color.nexoForest.opacity(0.3) : Color.nexoForest.opacity(0.07),
+                lineWidth: isOn ? 1 : 0.5
+            ))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(mat.displayName), \(mat.route.rawValue)")
@@ -214,17 +238,14 @@ struct EmpresaView: View {
                 isOn ? Color.nexoForest.opacity(0.07) : Color(uiColor: .secondarySystemBackground),
                 in: RoundedRectangle(cornerRadius: 12)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12).strokeBorder(
-                    isOn ? Color.nexoForest.opacity(0.3) : Color.nexoForest.opacity(0.06),
-                    lineWidth: 0.5
-                )
-            )
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(
+                isOn ? Color.nexoForest.opacity(0.3) : Color.nexoForest.opacity(0.06), lineWidth: 0.5
+            ))
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: - Step 1: Detalles del lote
+    // MARK: - Step 1: Detalles
 
     private var detailStep: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -239,8 +260,7 @@ struct EmpresaView: View {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 TextField("0", text: $kgText)
                     .font(.system(size: 52, weight: .bold)).tracking(-2)
-                    .foregroundStyle(Color.nexoForest).keyboardType(.decimalPad)
-                    .frame(maxWidth: .infinity)
+                    .foregroundStyle(Color.nexoForest).keyboardType(.decimalPad).frame(maxWidth: .infinity)
                 Text("kg")
                     .font(.system(size: 22, weight: .light))
                     .foregroundStyle(Color(uiColor: .tertiaryLabel)).padding(.trailing, 4)
@@ -265,11 +285,8 @@ struct EmpresaView: View {
             sectionLabel("Frecuencia de generación")
                 .padding(.horizontal, Sp.lg).padding(.top, 20).padding(.bottom, 12)
 
-            // id explícito aquí también
             HStack(spacing: 8) {
-                ForEach(FrecuenciaGeneracion.allCases, id: \.rawValue) { freq in
-                    frecuenciaChip(freq)
-                }
+                ForEach(FrecuenciaGeneracion.allCases, id: \.rawValue) { freq in frecuenciaChip(freq) }
             }
             .padding(.horizontal, Sp.lg)
 
@@ -280,16 +297,12 @@ struct EmpresaView: View {
 
             TextField(
                 "Ej: disponible entre 9–13 h, requiere camión de carga…",
-                text: $notes,
-                axis: .vertical
+                text: $notes, axis: .vertical
             )
             .font(.system(size: 14, weight: .light)).foregroundStyle(Color.nexoForest)
             .lineLimit(3...6).padding(Sp.md)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Rd.md))
-            .overlay(
-                RoundedRectangle(cornerRadius: Rd.md)
-                    .strokeBorder(Color.nexoForest.opacity(0.08), lineWidth: 0.5)
-            )
+            .overlay(RoundedRectangle(cornerRadius: Rd.md).strokeBorder(Color.nexoForest.opacity(0.08), lineWidth: 0.5))
             .padding(.horizontal, Sp.lg)
 
             Rectangle().fill(Color.nexoForest.opacity(0.07)).frame(height: 0.5).padding(.top, 20)
@@ -312,25 +325,35 @@ struct EmpresaView: View {
                 Text(mat.displayName)
                     .font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.nexoForest)
                 HStack(spacing: 5) {
-                    Image(systemName: tipoGenerador.icon).font(.system(size: 10))
-                    Text(tipoGenerador.rawValue).font(.system(size: 11, weight: .light))
+                    // Badge "Escaneado" si viene del scanner
+                    if preselectedMaterial?.classKey == mat.classKey {
+                        HStack(spacing: 4) {
+                            Image(systemName: "viewfinder").font(.system(size: 9))
+                            Text("Escaneado").font(.system(size: 10, weight: .semibold))
+                        }
+                        .foregroundStyle(Color.nexoBrand)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Color.nexoMint, in: Capsule())
+                    } else {
+                        Image(systemName: tipoGenerador.icon).font(.system(size: 10))
+                        Text(tipoGenerador.rawValue).font(.system(size: 11, weight: .light))
+                            .foregroundStyle(Color(uiColor: .secondaryLabel))
+                    }
                 }
-                .foregroundStyle(Color(uiColor: .secondaryLabel))
             }
             Spacer()
-            Button { withAnimation { step = 0 } } label: {
-                Text("Cambiar")
-                    .font(.system(size: 11, weight: .medium)).foregroundStyle(Color.nexoBrand)
-                    .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(Color.nexoBrand.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
+            // Solo mostrar "Cambiar" si NO viene del scanner (o si el usuario ya cambió de step)
+            if preselectedMaterial == nil {
+                Button { withAnimation { step = 0 } } label: {
+                    Text("Cambiar").font(.system(size: 11, weight: .medium)).foregroundStyle(Color.nexoBrand)
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .background(Color.nexoBrand.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
+                }
             }
         }
         .padding(Sp.md)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Rd.md))
-        .overlay(
-            RoundedRectangle(cornerRadius: Rd.md)
-                .strokeBorder(Color.nexoForest.opacity(0.08), lineWidth: 0.5)
-        )
+        .overlay(RoundedRectangle(cornerRadius: Rd.md).strokeBorder(Color.nexoForest.opacity(0.08), lineWidth: 0.5))
     }
 
     private func frecuenciaChip(_ freq: FrecuenciaGeneracion) -> some View {
@@ -346,12 +369,9 @@ struct EmpresaView: View {
                     isOn ? Color.nexoForest.opacity(0.08) : Color(uiColor: .secondarySystemBackground),
                     in: RoundedRectangle(cornerRadius: 8)
                 )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8).strokeBorder(
-                        isOn ? Color.nexoForest.opacity(0.3) : Color.nexoForest.opacity(0.06),
-                        lineWidth: 0.5
-                    )
-                )
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(
+                    isOn ? Color.nexoForest.opacity(0.3) : Color.nexoForest.opacity(0.06), lineWidth: 0.5
+                ))
         }
         .buttonStyle(.plain)
     }
@@ -359,10 +379,8 @@ struct EmpresaView: View {
     private func impactProjection(mat: NEXOMaterial, kg: Double) -> some View {
         let mult: Double = {
             switch frecuencia {
-            case .diaria:    return 365
-            case .semanal:   return 52
-            case .quincenal: return 26
-            case .mensual:   return 12
+            case .diaria: return 365; case .semanal: return 52
+            case .quincenal: return 26; case .mensual: return 12
             }
         }()
         let kgAnual  = kg * mult
@@ -377,20 +395,15 @@ struct EmpresaView: View {
                 projectionCell(label: "CO₂ evitado", value: String(format: "%.1f kg", co2Anual), color: Color.nexoBrand)
             }
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Rd.md))
-            .overlay(
-                RoundedRectangle(cornerRadius: Rd.md)
-                    .strokeBorder(Color.nexoForest.opacity(0.07), lineWidth: 0.5)
-            )
+            .overlay(RoundedRectangle(cornerRadius: Rd.md).strokeBorder(Color.nexoForest.opacity(0.07), lineWidth: 0.5))
         }
         .padding(.horizontal, Sp.lg).padding(.vertical, 20)
     }
 
     private func projectionCell(label: String, value: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.system(size: 10, weight: .light)).foregroundStyle(Color(uiColor: .secondaryLabel))
-            Text(value)
-                .font(.system(size: 26, weight: .bold)).tracking(-1).foregroundStyle(color)
+            Text(label).font(.system(size: 10, weight: .light)).foregroundStyle(Color(uiColor: .secondaryLabel))
+            Text(value).font(.system(size: 26, weight: .bold)).tracking(-1).foregroundStyle(color)
         }
         .frame(maxWidth: .infinity, alignment: .leading).padding(Sp.md)
     }
@@ -424,22 +437,42 @@ struct EmpresaView: View {
                 }
                 .padding(Sp.md)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Rd.lg))
-                .overlay(
-                    RoundedRectangle(cornerRadius: Rd.lg)
-                        .strokeBorder(Color.nexoForest.opacity(0.07), lineWidth: 0.5)
-                )
+                .overlay(RoundedRectangle(cornerRadius: Rd.lg).strokeBorder(Color.nexoForest.opacity(0.07), lineWidth: 0.5))
                 .padding(.horizontal, Sp.lg)
             }
             Spacer()
-            Button {
-                withAnimation { step = 0; selectedMaterial = nil; kgText = ""; notes = "" }
-            } label: {
-                Text("Publicar otro lote")
-                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
-                    .frame(maxWidth: .infinity).frame(height: 54)
-                    .background(Color.nexoForest, in: RoundedRectangle(cornerRadius: Rd.lg))
+            // Si es sheet del scanner, ofrece cerrar en lugar de publicar otro
+            if preselectedMaterial != nil {
+                HStack(spacing: 10) {
+                    Button { dismiss() } label: {
+                        Text("Cerrar")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Color.nexoForest)
+                            .frame(maxWidth: .infinity).frame(height: 54)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Rd.lg))
+                            .overlay(RoundedRectangle(cornerRadius: Rd.lg).strokeBorder(Color.nexoForest.opacity(0.12), lineWidth: 0.5))
+                    }
+                    Button {
+                        withAnimation { step = 1; kgText = ""; notes = "" }
+                    } label: {
+                        Text("Publicar otro")
+                            .font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                            .frame(maxWidth: .infinity).frame(height: 54)
+                            .background(Color.nexoForest, in: RoundedRectangle(cornerRadius: Rd.lg))
+                    }
+                }
+                .padding(.horizontal, Sp.lg).padding(.bottom, 40)
+            } else {
+                Button {
+                    withAnimation { step = 0; selectedMaterial = nil; kgText = ""; notes = "" }
+                } label: {
+                    Text("Publicar otro lote")
+                        .font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).frame(height: 54)
+                        .background(Color.nexoForest, in: RoundedRectangle(cornerRadius: Rd.lg))
+                }
+                .padding(.horizontal, Sp.lg).padding(.bottom, 40)
             }
-            .padding(.horizontal, Sp.lg).padding(.bottom, 40)
         }
     }
 
@@ -473,8 +506,7 @@ struct EmpresaView: View {
                         .foregroundStyle(selectedMaterial == nil ? Color(uiColor: .tertiaryLabel) : .white)
                         .frame(maxWidth: .infinity).frame(height: 54)
                         .background(
-                            selectedMaterial == nil
-                                ? Color(uiColor: .secondarySystemBackground) : Color.nexoForest,
+                            selectedMaterial == nil ? Color(uiColor: .secondarySystemBackground) : Color.nexoForest,
                             in: RoundedRectangle(cornerRadius: Rd.lg)
                         )
                 }
@@ -483,28 +515,27 @@ struct EmpresaView: View {
 
             } else {
                 HStack(spacing: 10) {
-                    Button {
-                        withAnimation(.easeOut(duration: 0.2)) { contentIn = false }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-                            step = 0
-                            withAnimation(.easeOut(duration: 0.3)) { contentIn = true }
+                    // Solo mostrar volver si NO viene del scanner (para no confundir con el X)
+                    if preselectedMaterial == nil {
+                        Button {
+                            withAnimation(.easeOut(duration: 0.2)) { contentIn = false }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                                step = 0
+                                withAnimation(.easeOut(duration: 0.3)) { contentIn = true }
+                            }
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.nexoForest)
+                                .frame(width: 54, height: 54)
+                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Rd.lg))
+                                .overlay(RoundedRectangle(cornerRadius: Rd.lg).strokeBorder(Color.nexoForest.opacity(0.12), lineWidth: 0.5))
                         }
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.nexoForest)
-                            .frame(width: 54, height: 54)
-                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Rd.lg))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: Rd.lg)
-                                    .strokeBorder(Color.nexoForest.opacity(0.12), lineWidth: 0.5)
-                            )
                     }
 
                     Button { publicarLote() } label: {
                         Group {
-                            if isPublishing {
-                                ProgressView().tint(.white)
-                            } else {
+                            if isPublishing { ProgressView().tint(.white) }
+                            else {
                                 Text("Publicar lote")
                                     .font(.system(size: 15, weight: .semibold))
                                     .foregroundStyle(canPublish ? .white : Color(uiColor: .tertiaryLabel))
@@ -527,13 +558,10 @@ struct EmpresaView: View {
 
     // MARK: - Helpers
 
-    private var canPublish: Bool {
-        selectedMaterial != nil && (Double(kgText) ?? 0) > 0
-    }
+    private var canPublish: Bool { selectedMaterial != nil && (Double(kgText) ?? 0) > 0 }
 
     private func sectionLabel(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 10, weight: .semibold)).tracking(2).textCase(.uppercase)
+        Text(text).font(.system(size: 10, weight: .semibold)).tracking(2).textCase(.uppercase)
             .foregroundStyle(Color.nexoBrand.opacity(0.6))
     }
 
@@ -552,30 +580,18 @@ struct EmpresaView: View {
                 .compactMap { $0 }.joined(separator: ". ")
 
             let nuevo = NewListing(
-                material      : mat.displayName,
-                quantityLabel : quantityStr,
-                notes         : notesStr,
-                lat           : coord.latitude,
-                lng           : coord.longitude,
-                classKey      : mat.classKey,
-                displayName   : mat.displayName,
-                icon          : mat.icon,
-                route         : mat.route.rawValue,
-                co2           : mat.co2,
-                water         : mat.water,
-                value         : mat.value,
-                fmInstruction : nil
+                material: mat.displayName, quantityLabel: quantityStr, notes: notesStr,
+                lat: coord.latitude, lng: coord.longitude,
+                classKey: mat.classKey, displayName: mat.displayName, icon: mat.icon,
+                route: mat.route.rawValue, co2: mat.co2, water: mat.water, value: mat.value,
+                fmInstruction: nil
             )
             let ok = await repo.publish(nuevo)
             isPublishing = false
             if ok {
-                // Guardar en SwiftData para el historial
                 let registro = LoteRegistro(
-                    material      : mat,
-                    kgEstimados   : kg,
-                    frecuencia    : frecuencia,
-                    tipoGenerador : tipoGenerador,
-                    notes         : notesStr
+                    material: mat, kgEstimados: kg,
+                    frecuencia: frecuencia, tipoGenerador: tipoGenerador, notes: notesStr
                 )
                 context.insert(registro)
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -589,6 +605,14 @@ struct EmpresaView: View {
 
 #Preview("Empresa") {
     EmpresaView()
+        .environmentObject(ListingsRepository())
+        .environmentObject(LocationManager.shared)
+        .environmentObject(AuthService.shared)
+        .modelContainer(for: LoteRegistro.self, inMemory: true)
+}
+
+#Preview("Empresa desde scanner") {
+    EmpresaView(preselectedMaterial: NEXOMaterial.all["cardboard_box"]!)
         .environmentObject(ListingsRepository())
         .environmentObject(LocationManager.shared)
         .environmentObject(AuthService.shared)

@@ -1,4 +1,4 @@
-// RecolectorView.swift — Centros de acopio + bulk value + ruta en mapa
+// RecolectorView.swift
 import SwiftUI
 import MapKit
 import AVFoundation
