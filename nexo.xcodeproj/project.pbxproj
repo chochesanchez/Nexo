@@ -10,6 +10,7 @@
 		E553B6612FA993D1008E34B5 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = E553B6602FA993D1008E34B5 /* Auth */; };
 		E553B6632FA993D1008E34B5 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = E553B6622FA993D1008E34B5 /* PostgREST */; };
 		E553B6652FA993D1008E34B5 /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = E553B6642FA993D1008E34B5 /* Realtime */; };
+		E553B6772FA9967B008E34B5 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = E553B6762FA9967B008E34B5 /* Supabase */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,6 +30,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E553B6772FA9967B008E34B5 /* Supabase in Frameworks */,
 				E553B6652FA993D1008E34B5 /* Realtime in Frameworks */,
 				E553B6632FA993D1008E34B5 /* PostgREST in Frameworks */,
 				E553B6612FA993D1008E34B5 /* Auth in Frameworks */,
@@ -38,10 +40,18 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		E553B6752FA9967B008E34B5 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		E57595A62FA94FC20014E526 = {
 			isa = PBXGroup;
 			children = (
 				E57595B12FA94FC20014E526 /* nexo */,
+				E553B6752FA9967B008E34B5 /* Frameworks */,
 				E57595B02FA94FC20014E526 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -77,6 +87,7 @@
 				E553B6602FA993D1008E34B5 /* Auth */,
 				E553B6622FA993D1008E34B5 /* PostgREST */,
 				E553B6642FA993D1008E34B5 /* Realtime */,
+				E553B6762FA9967B008E34B5 /* Supabase */,
 			);
 			productName = nexo;
 			productReference = E57595AF2FA94FC20014E526 /* nexo.app */;
@@ -374,6 +385,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E553B65F2FA993D1008E34B5 /* XCRemoteSwiftPackageReference "supabase-swift" */;
 			productName = Realtime;
+		};
+		E553B6762FA9967B008E34B5 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E553B65F2FA993D1008E34B5 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
