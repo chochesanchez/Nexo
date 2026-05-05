@@ -1,8 +1,6 @@
 // CameraManager.swift
-// Agrega VNRecognizeTextRequest para leer etiquetas del residuo
-// (tipo de plástico, símbolos Li-ion, rechargeable, compostable, etc.)
-// en paralelo con la clasificación visual.
-// Info.plist requiere: NSCameraUsageDescription
+// Usa VNCoreMLRequest con el modelo NexoClass1 entrenado en Create ML
+// en paralelo con VNRecognizeTextRequest para lectura de etiquetas.
 
 import AVFoundation
 import SwiftUI
@@ -74,7 +72,7 @@ final class CameraManager: NSObject, ObservableObject {
         out.capturePhoto(with: AVCapturePhotoSettings(), delegate: self)
     }
 
-    // MARK: - Análisis de imagen (Vision)
+    // MARK: - Análisis de imagen (Vision + Core ML)
 
     private func analyze(data: Data) {
         guard let ci = CIImage(data: data) else {
@@ -84,16 +82,24 @@ final class CameraManager: NSObject, ObservableObject {
 
         let handler = VNImageRequestHandler(ciImage: ci, options: [:])
 
-        // ── 1. Clasificación visual ──────────────────────────────────────────
-        let classifyRequest = VNClassifyImageRequest { [weak self] req, _ in
+        // ── 1. Clasificación con Core ML (VNCoreMLRequest + NexoClass1) ──────
+        guard let coreMLModel = try? VNCoreMLModel(for: NexoClass1().model) else {
+            DispatchQueue.main.async {
+                self.isAnalyzing = false
+                self.errorMessage = "No se pudo cargar el modelo de clasificación."
+            }
+            return
+        }
+
+        let classifyRequest = VNCoreMLRequest(model: coreMLModel) { [weak self] req, _ in
             guard let self else { return }
             let results = req.results as? [VNClassificationObservation] ?? []
-            var found: NEXOMaterial? = nil
-            for obs in results.prefix(15) {
-                if let mat = NEXOMaterial.from(visionLabel: obs.identifier) {
-                    found = mat; break
-                }
+
+            // Toma la clase con mayor confianza
+            let found = results.first.flatMap { obs in
+                NEXOMaterial.from(visionLabel: obs.identifier)
             }
+
             DispatchQueue.main.async {
                 self.isAnalyzing = false
                 if let found {
@@ -103,47 +109,37 @@ final class CameraManager: NSObject, ObservableObject {
                 }
             }
         }
+        classifyRequest.imageCropAndScaleOption = .centerCrop
 
         // ── 2. Reconocimiento de texto (VNRecognizeTextRequest) ──────────────
-        // Lee etiquetas como: PET, HDPE, PP, Li-ion, mAh, rechargeable,
-        // compostable, biodegradable, y los símbolos de reciclaje numéricos.
         let textRequest = VNRecognizeTextRequest { [weak self] req, _ in
             guard let self else { return }
             let observations = req.results as? [VNRecognizedTextObservation] ?? []
-
-            // Recoge todas las cadenas con confianza razonable
             let strings = observations.compactMap { obs -> String? in
                 guard let top = obs.topCandidates(1).first,
                       top.confidence > 0.5 else { return nil }
                 return top.string
             }
             let fullText = strings.joined(separator: " ")
-
-            // Filtra tokens relevantes para preparación del residuo
             let keywords: [String] = [
                 "PET", "HDPE", "LDPE", "PP", "PS", "PVC",
                 "Li-ion", "Li-Po", "mAh", "rechargeable", "recargable",
                 "compostable", "biodegradable", "reciclable",
-                "1", "2", "3", "4", "5", "6", "7"   // números del símbolo de reciclaje
+                "1", "2", "3", "4", "5", "6", "7"
             ]
             let detected = keywords.filter { fullText.uppercased().contains($0.uppercased()) }
-
             DispatchQueue.main.async {
-                if !detected.isEmpty {
-                    self.detectedOCRText = detected.joined(separator: ", ")
-                }
+                if !detected.isEmpty { self.detectedOCRText = detected.joined(separator: ", ") }
             }
         }
         textRequest.recognitionLevel = .accurate
         textRequest.recognitionLanguages = ["es-MX", "en-US"]
         textRequest.usesLanguageCorrection = true
-
-        // Activa reconocimiento on-device si está disponible
         if #available(iOS 16.0, *) {
             textRequest.revision = VNRecognizeTextRequestRevision3
         }
 
-        // ── Ejecutar ambos requests en paralelo ──────────────────────────────
+        // ── Ejecutar ambos en paralelo ────────────────────────────────────────
         DispatchQueue.global(qos: .userInitiated).async {
             try? handler.perform([classifyRequest, textRequest])
         }
