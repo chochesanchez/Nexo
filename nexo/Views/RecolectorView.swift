@@ -67,10 +67,10 @@ struct RecolectorView: View {
     @StateObject private var voiceCmd = VoiceCommandManager()
     @StateObject private var speech   = RecolectorSpeech()
 
-    @State private var cameraPosition: MapCameraPosition = .region(MKCoordinateRegion(
+    @State private var cameraPosition: MapCameraPosition = .userLocation(followsHeading: false, fallback: .region(MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 19.4326, longitude: -99.1332),
         span:   MKCoordinateSpan(latitudeDelta: 0.03, longitudeDelta: 0.03)
-    ))
+    )))
 
     // Fichas
     @State private var pins            : [FichaPin] = []
@@ -85,7 +85,7 @@ struct RecolectorView: View {
     @State private var showRouteCard      = false
 
     // ── NUEVO: Centros de acopio ──────────────────────────────────────────
-    @State private var mostrarCentros     = false
+    @State private var mostrarCentros     = true
     @State private var centrosVisibles    : [PuntoReciclaje] = []
     @State private var centroSeleccionado : PuntoReciclaje?  = nil
     @State private var showCentroSheet    = false
@@ -269,33 +269,53 @@ struct RecolectorView: View {
         .padding(.horizontal, Sp.lg).padding(.top, 56)
     }
 
-    // MARK: - Botón ubicación
-
+    // MARK: - Floating action buttons 
     private var locationButton: some View {
         VStack {
             Spacer()
             HStack {
                 Spacer()
-                Button {
-                    withAnimation(.easeOut(duration: 0.4)) {
-                        cameraPosition = .userLocation(fallback: .automatic)
+                VStack(spacing: 12) {
+                    // Botón navegación — abre Maps con ruta al pin actual
+                    if let pin = currentPin {
+                        Button {
+                            let item = MKMapItem(placemark: MKPlacemark(coordinate: pin.coordinate))
+                            item.name = pin.material.displayName
+                            item.openInMaps(launchOptions: [
+                                MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
+                            ])
+                        } label: {
+                            Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                                .font(.system(size: 22, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 54, height: 54)
+                                .background(Color.nexoForest, in: RoundedRectangle(cornerRadius: 14))
+                                .shadow(color: Color.nexoForest.opacity(0.35), radius: 10, y: 4)
+                        }
+                        .accessibilityLabel("Navegar al material")
                     }
-                } label: {
-                    Image(systemName: "location.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Color.nexoBrand)
-                        .frame(width: 44, height: 44)
-                        .background(.regularMaterial, in: Circle())
-                        .overlay(Circle().strokeBorder(Color(uiColor: .separator), lineWidth: 0.5))
-                        .shadow(color: .black.opacity(0.08), radius: 8, y: 2)
+
+                    // Botón mi ubicación
+                    Button {
+                        withAnimation(.easeOut(duration: 0.4)) {
+                            cameraPosition = .userLocation(fallback: .automatic)
+                        }
+                    } label: {
+                        Image(systemName: "location.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color.nexoBrand)
+                            .frame(width: 44, height: 44)
+                            .background(.regularMaterial, in: Circle())
+                            .overlay(Circle().strokeBorder(Color(uiColor: .separator), lineWidth: 0.5))
+                            .shadow(color: .black.opacity(0.08), radius: 8, y: 2)
+                    }
+                    .accessibilityLabel("Centrar en mi ubicación")
                 }
                 .padding(.trailing, Sp.lg)
-                .padding(.bottom, showRouteCard ? 270 : 200)
-                .accessibilityLabel("Centrar en mi ubicación")
+                .padding(.bottom, showRouteCard ? 290 : 210)
             }
         }
     }
-
     // MARK: - Bottom panel normal
 
     private var bottomPanel: some View {
@@ -472,8 +492,8 @@ struct RecolectorView: View {
     // MARK: - Lógica
 
     private func cargarCentros() {
-        let base = CLLocationCoordinate2D(latitude: 19.4326, longitude: -99.1332)
-        centrosVisibles = CentroAcopio.cercanos(a: base, radioKm: 15)
+        let base = LocationManager.shared.coordinate ?? CLLocationCoordinate2D(latitude: 19.4326, longitude: -99.1332)
+        centrosVisibles = PuntoReciclaje.cercanos(a: base, radioKm: 15)
     }
 
     private func iniciarRuta(pin: FichaPin) {

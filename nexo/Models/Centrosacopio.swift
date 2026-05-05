@@ -3,15 +3,10 @@
 //  nexo
 //
 //  Created by Guillermo Lira on 05/05/26.
+
 //
-
-// CentrosAcopio.swift
-// Centros de acopio reales en CDMX + modelo de datos para el mapa.
-// Fuentes: SEDEMA CDMX, Puntos Limpios, ELECTRORECICLA, datos.cdmx.gob.mx
-
 import SwiftUI
 import CoreLocation
-import Combine
 
 // MARK: - Tipo de centro
 
@@ -43,24 +38,24 @@ enum TipoAcopio: String, CaseIterable {
     }
 }
 
-// MARK: - Centro de acopio
+// MARK: - Modelo
 
 struct PuntoReciclaje: Identifiable {
     let id         = UUID()
     let nombre     : String
     let tipo       : TipoAcopio
     let coordinate : CLLocationCoordinate2D
-    let materiales : [String]    // qué acepta
+    let materiales : [String]
     let horario    : String
     let telefono   : String?
 }
 
 // MARK: - Datos estáticos CDMX
 
-extension CentroAcopio {
+extension PuntoReciclaje {
     static let cdmxAll: [PuntoReciclaje] = [
 
-        // ── Puntos Limpios SEDEMA ──────────────────────────────────────────
+        // ── Puntos Limpios SEDEMA ─────────────────────────────────────────
         PuntoReciclaje(
             nombre     : "Punto Limpio Iztapalapa",
             tipo       : .general,
@@ -191,8 +186,9 @@ extension CentroAcopio {
         ),
     ]
 
-    /// Filtra centros dentro de un radio en km
-    static func cercanos(a coordinate: CLLocationCoordinate2D, radioKm: Double = 10) -> [PuntoReciclaje] {
+    /// Filtra centros dentro de un radio en km.
+    /// Usa la ubicación real del usuario si está disponible.
+    static func cercanos(a coordinate: CLLocationCoordinate2D, radioKm: Double = 15) -> [PuntoReciclaje] {
         let origen = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
         return cdmxAll.filter { centro in
             let destino = CLLocation(latitude: centro.coordinate.latitude,
@@ -202,10 +198,10 @@ extension CentroAcopio {
     }
 }
 
-// MARK: - Anotación visual del centro en el mapa
+// MARK: - Pin visual en el mapa
 
 struct PuntoReciclajePin: View {
-    let centro   : PuntoReciclaje
+    let centro    : PuntoReciclaje
     var isSelected: Bool = false
 
     var body: some View {
@@ -215,16 +211,18 @@ struct PuntoReciclajePin: View {
                     .fill(centro.tipo.color)
                     .frame(width: isSelected ? 36 : 26,
                            height: isSelected ? 36 : 26)
-                    .shadow(color: centro.tipo.color.opacity(0.4), radius: isSelected ? 6 : 3)
+                    .shadow(color: centro.tipo.color.opacity(0.4),
+                            radius: isSelected ? 6 : 3)
 
                 Image(systemName: centro.tipo.icon)
                     .font(.system(size: isSelected ? 16 : 11, weight: .semibold))
                     .foregroundStyle(.white)
             }
-            // Cola
+            // Cola triangular
             Triangle()
                 .fill(centro.tipo.color)
-                .frame(width: isSelected ? 8 : 6, height: isSelected ? 5 : 4)
+                .frame(width: isSelected ? 8 : 6,
+                       height: isSelected ? 5 : 4)
         }
         .animation(.spring(response: 0.3), value: isSelected)
     }
@@ -233,9 +231,9 @@ struct PuntoReciclajePin: View {
 struct Triangle: Shape {
     func path(in rect: CGRect) -> Path {
         var p = Path()
-        p.move(to: CGPoint(x: rect.midX, y: rect.maxY))
-        p.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
-        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        p.move(to:     CGPoint(x: rect.midX, y: rect.maxY))
+        p.addLine(to:  CGPoint(x: rect.minX, y: rect.minY))
+        p.addLine(to:  CGPoint(x: rect.maxX, y: rect.minY))
         p.closeSubpath()
         return p
     }

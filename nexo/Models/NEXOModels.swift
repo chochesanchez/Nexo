@@ -109,13 +109,40 @@ extension NEXOMaterial {
     static func from(visionLabel: String) -> NEXOMaterial? {
         let label = visionLabel.lowercased()
         let mapping: [(keys: [String], classKey: String)] = [
-            (["bottle","water bottle","plastic","pet","jug","container"],   "pet_bottle"),
-            (["can","tin","aluminum","beverage","soda","beer"],             "aluminum_can"),
-            (["cardboard","box","carton","package","parcel"],              "cardboard_box"),
-            (["wine","glass bottle","jar","mason","flask","vase"],         "glass_bottle"),
-            (["banana","apple","orange","fruit","lemon","food","vegetable","peel","mango","avocado","tomato"], "organic_simple"),
-            (["phone","mobile","cell","laptop","battery","electronic","earphone","remote","tablet","charger","vape","headphone","keyboard"], "battery_electronic"),
-        ]
+                    // PET — YOLO COCO: bottle, water bottle
+                    (["bottle", "water bottle", "plastic", "pet", "jug", "container"],
+                     "pet_bottle"),
+         
+                    // Aluminio — YOLO COCO no tiene "can"; usa cup/mug (latas cilíndricas mal clasificadas)
+                    (["can", "tin", "aluminum", "beverage", "soda", "beer",
+                      "cup", "mug", "thermos", "cylinder"],
+                     "aluminum_can"),
+         
+                    // Cartón — YOLO COCO: book, suitcase, backpack (todo lo rectangular/plano)
+                    (["cardboard", "box", "carton", "package", "parcel",
+                      "book", "suitcase", "backpack", "handbag"],
+                     "cardboard_box"),
+         
+                    // Vidrio — YOLO COCO: wine glass, vase, jar, bottle (vidrio)
+                    (["wine", "glass bottle", "jar", "mason", "flask", "vase",
+                      "wine glass"],
+                     "glass_bottle"),
+         
+                    // Orgánico — YOLO COCO tiene muchos alimentos
+                    (["banana", "apple", "orange", "fruit", "lemon", "food",
+                      "vegetable", "peel", "mango", "avocado", "tomato",
+                      "broccoli", "carrot", "hot dog", "pizza", "sandwich",
+                      "donut", "cake"],
+                     "organic_simple"),
+         
+                    // Electrónico — YOLO COCO: cell phone, laptop, remote, keyboard
+                    (["phone", "mobile", "cell", "laptop", "battery",
+                      "electronic", "earphone", "remote", "tablet", "charger",
+                      "vape", "headphone", "keyboard", "mouse", "monitor",
+                      "tv", "cell phone"],
+                     "battery_electronic"),
+                ]
+         
         for (keys, classKey) in mapping {
             if keys.contains(where: { label.contains($0) }) { return all[classKey] }
         }

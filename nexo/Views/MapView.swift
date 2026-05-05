@@ -1,16 +1,17 @@
 import SwiftUI
 import MapKit
 
-// MARK: - FichaPin (actualizado con isLote)
+// MARK: - FichaPin
 
 struct FichaPin: Identifiable {
     let id         = UUID()
     let coordinate : CLLocationCoordinate2D
     let material   : NEXOMaterial
-    let isLote     : Bool        // true = publicado desde Modo Empresa
-    let kgLabel    : String?     // ej. "50 kg · Semanal"
+    let isLote     : Bool
+    let kgLabel    : String?
 
-    init(coordinate: CLLocationCoordinate2D, material: NEXOMaterial, isLote: Bool = false, kgLabel: String? = nil) {
+    init(coordinate: CLLocationCoordinate2D, material: NEXOMaterial,
+         isLote: Bool = false, kgLabel: String? = nil) {
         self.coordinate = coordinate
         self.material   = material
         self.isLote     = isLote
@@ -21,9 +22,9 @@ struct FichaPin: Identifiable {
 // MARK: - Filtro de tipo de generador
 
 enum FiltroGenerador: String, CaseIterable {
-    case todos     = "Todos"
-    case hogar     = "Hogar"
-    case empresa   = "Empresa"
+    case todos   = "Todos"
+    case hogar   = "Hogar"
+    case empresa = "Empresa"
 
     var icon: String {
         switch self {
@@ -34,7 +35,7 @@ enum FiltroGenerador: String, CaseIterable {
     }
 }
 
-// MARK: - Mock pins con variedad hogar + empresa
+// MARK: - Mock pins
 
 func mockPins() -> [FichaPin] {
     let base = CLLocationCoordinate2D(latitude: 19.4326, longitude: -99.1332)
@@ -54,9 +55,7 @@ func mockPins() -> [FichaPin] {
         return FichaPin(
             coordinate: CLLocationCoordinate2D(latitude: base.latitude + dlat,
                                               longitude: base.longitude + dlon),
-            material: mat,
-            isLote: isLote,
-            kgLabel: kg
+            material: mat, isLote: isLote, kgLabel: kg
         )
     }
 }
@@ -67,15 +66,17 @@ struct MapView: View {
     var listings  : [Listing] = []
     var isLoading : Bool      = false
 
-    @State private var position: MapCameraPosition = .region(
-        MKCoordinateRegion(
+    // Arranca centrado en la ubicación real del usuario
+    @State private var position: MapCameraPosition = .userLocation(
+        followsHeading: false,
+        fallback: .region(MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 19.4326, longitude: -99.1332),
             span:   MKCoordinateSpan(latitudeDelta: 0.03, longitudeDelta: 0.03)
-        )
+        ))
     )
-    @State private var selectedPin     : FichaPin? = nil
-    @State private var showFicha       = false
-    @State private var filtroActivo    : FiltroGenerador = .todos
+    @State private var selectedPin  : FichaPin?       = nil
+    @State private var showFicha    = false
+    @State private var filtroActivo : FiltroGenerador = .todos
 
     private var allPins: [FichaPin] {
         if listings.isEmpty { return mockPins() }
@@ -84,9 +85,7 @@ struct MapView: View {
             let isLote = listing.notes?.contains("Tipo:") ?? false
             return FichaPin(
                 coordinate: CLLocationCoordinate2D(latitude: listing.lat, longitude: listing.lng),
-                material  : mat,
-                isLote    : isLote,
-                kgLabel   : listing.quantityLabel
+                material  : mat, isLote: isLote, kgLabel: listing.quantityLabel
             )
         }
     }
@@ -100,12 +99,14 @@ struct MapView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack {
+            // Mapa full bleed
             Map(position: $position) {
                 ForEach(filteredPins) { pin in
                     Annotation(pin.material.displayName, coordinate: pin.coordinate) {
                         PinView(material: pin.material, isLote: pin.isLote) {
-                            selectedPin = pin; showFicha = true
+                            withAnimation { selectedPin = pin }
+                            showFicha = true
                         }
                     }
                 }
@@ -116,21 +117,68 @@ struct MapView: View {
                 }
                 UserAnnotation()
             }
+            .mapStyle(.standard(elevation: .realistic))
             .ignoresSafeArea()
 
-            topBar
+            // Top bar
+            VStack { topBar; Spacer() }
+
+            // ── Botones flotantes estilo Google Maps ──────────────────────
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    VStack(spacing: 12) {
+
+                        // Botón navegación — aparece al seleccionar un pin
+                        if let pin = selectedPin {
+                            Button {
+                                let item = MKMapItem(placemark: MKPlacemark(coordinate: pin.coordinate))
+                                item.name = pin.material.displayName
+                                item.openInMaps(launchOptions: [
+                                    MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
+                                ])
+                            } label: {
+                                Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                                    .font(.system(size: 22, weight: .semibold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 54, height: 54)
+                                    .background(Color.nexoForest, in: RoundedRectangle(cornerRadius: 14))
+                                    .shadow(color: Color.nexoForest.opacity(0.35), radius: 10, y: 4)
+                            }
+                            .accessibilityLabel("Navegar a \(pin.material.displayName)")
+                            .transition(.scale.combined(with: .opacity))
+                        }
+
+                        // Botón mi ubicación — siempre visible
+                        Button {
+                            withAnimation(.easeOut(duration: 0.4)) {
+                                position = .userLocation(followsHeading: false, fallback: .automatic)
+                            }
+                        } label: {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(Color.nexoBrand)
+                                .frame(width: 44, height: 44)
+                                .background(.regularMaterial, in: Circle())
+                                .overlay(Circle().strokeBorder(Color(uiColor: .separator), lineWidth: 0.5))
+                                .shadow(color: .black.opacity(0.08), radius: 8, y: 2)
+                        }
+                        .accessibilityLabel("Centrar en mi ubicación")
+                    }
+                    .padding(.trailing, Sp.lg)
+                    .padding(.bottom, 100)
+                }
+            }
         }
         .ignoresSafeArea(edges: .top)
+        .animation(.spring(response: 0.3), value: selectedPin?.id)
         .sheet(isPresented: $showFicha) {
             if let pin = selectedPin {
                 if pin.isLote {
                     LoteDetailSheet(pin: pin, isPresented: $showFicha)
                 } else {
-                    FichaView(
-                        material    : pin.material,
-                        ocrText     : nil,
-                        isPresented : $showFicha
-                    )
+                    FichaView(material: pin.material, ocrText: nil, isPresented: $showFicha)
                 }
             }
         }
@@ -155,9 +203,7 @@ struct MapView: View {
                 if isLoading {
                     ProgressView().tint(Color.nexoGreen)
                 } else {
-                    // Badge de conteo
                     HStack(spacing: 6) {
-                        // Empresa count
                         let empresaCount = allPins.filter { $0.isLote }.count
                         if empresaCount > 0 {
                             HStack(spacing: 4) {
@@ -167,37 +213,28 @@ struct MapView: View {
                                     .font(.system(size: 12, weight: .bold))
                             }
                             .foregroundStyle(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, 8).padding(.vertical, 4)
                             .background(Color.nexoBlue, in: Capsule())
                         }
-                        // Total
                         Text("\(filteredPins.count)")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
+                            .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+                            .padding(.horizontal, 10).padding(.vertical, 5)
                             .background(Color.nexoGreen, in: Capsule())
                     }
                 }
             }
-            .padding(.horizontal, Sp.lg)
-            .padding(.top, 60)
-            .padding(.bottom, Sp.md)
+            .padding(.horizontal, Sp.lg).padding(.top, 60).padding(.bottom, Sp.md)
 
-            // Filtros de tipo de generador
+            // Chips de filtro
             HStack(spacing: 6) {
                 ForEach(FiltroGenerador.allCases, id: \.self) { filtro in
                     filtroChip(filtro)
                 }
                 Spacer()
             }
-            .padding(.horizontal, Sp.lg)
-            .padding(.bottom, Sp.md)
+            .padding(.horizontal, Sp.lg).padding(.bottom, Sp.md)
 
-            Rectangle()
-                .fill(Color.primary.opacity(0.06))
-                .frame(height: 0.5)
+            Rectangle().fill(Color.primary.opacity(0.06)).frame(height: 0.5)
         }
         .background(.ultraThinMaterial)
     }
@@ -207,14 +244,11 @@ struct MapView: View {
             withAnimation(.easeOut(duration: 0.2)) { filtroActivo = filtro }
         } label: {
             HStack(spacing: 5) {
-                Image(systemName: filtro.icon)
-                    .font(.system(size: 10, weight: .semibold))
-                Text(filtro.rawValue)
-                    .font(.system(size: 11, weight: .semibold))
+                Image(systemName: filtro.icon).font(.system(size: 10, weight: .semibold))
+                Text(filtro.rawValue).font(.system(size: 11, weight: .semibold))
             }
             .foregroundStyle(filtroActivo == filtro ? .white : Color.primary.opacity(0.6))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 12).padding(.vertical, 7)
             .background(
                 filtroActivo == filtro ? Color.nexoBlack : Color.primary.opacity(0.06),
                 in: Capsule()
@@ -225,7 +259,7 @@ struct MapView: View {
     }
 }
 
-// MARK: - PinView (actualizado con isLote)
+// MARK: - PinView
 
 struct PinView: View {
     let material : NEXOMaterial
@@ -243,35 +277,25 @@ struct PinView: View {
         Button(action: onTap) {
             VStack(spacing: 2) {
                 ZStack {
-                    // Pines de empresa: forma cuadrada redondeada, más grandes, con borde
                     if isLote {
                         RoundedRectangle(cornerRadius: 10)
                             .fill(Color.nexoBlue)
                             .frame(width: 46, height: 46)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .strokeBorder(.white.opacity(0.3), lineWidth: 1.5)
-                            )
+                            .overlay(RoundedRectangle(cornerRadius: 10)
+                                .strokeBorder(.white.opacity(0.3), lineWidth: 1.5))
                             .shadow(color: Color.nexoBlue.opacity(0.5), radius: 8, y: 4)
                         VStack(spacing: 2) {
                             Image(systemName: material.icon)
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(.white)
-                            // Badge "KG" para empresa
+                                .font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
                             Text("LOTE")
-                                .font(.system(size: 6, weight: .black))
-                                .tracking(0.5)
+                                .font(.system(size: 6, weight: .black)).tracking(0.5)
                                 .foregroundStyle(.white.opacity(0.8))
                         }
                     } else {
-                        // Pin de hogar: círculo clásico
-                        Circle()
-                            .fill(material.accent)
-                            .frame(width: 40, height: 40)
+                        Circle().fill(material.accent).frame(width: 40, height: 40)
                             .shadow(color: material.accent.opacity(0.4), radius: 6, y: 3)
                         Image(systemName: material.icon)
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(.white)
+                            .font(.system(size: 18, weight: .semibold)).foregroundStyle(.white)
                     }
                 }
                 Image(systemName: "arrowtriangle.down.fill")
@@ -284,8 +308,7 @@ struct PinView: View {
         .animation(.spring(response: 0.25), value: pressed)
         .simultaneousGesture(DragGesture(minimumDistance: 0)
             .onChanged { _ in pressed = true }
-            .onEnded   { _ in pressed = false }
-        )
+            .onEnded   { _ in pressed = false })
         .accessibilityLabel(
             isLote
                 ? "\(material.displayName) — lote empresarial. Toca para ver detalles."
@@ -294,7 +317,7 @@ struct PinView: View {
     }
 }
 
-// MARK: - LoteDetailSheet (hoja de detalle para pines de empresa)
+// MARK: - LoteDetailSheet
 
 struct LoteDetailSheet: View {
     let pin         : FichaPin
@@ -302,143 +325,91 @@ struct LoteDetailSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Handle
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color.primary.opacity(0.12))
-                .frame(width: 32, height: 3)
-                .padding(.top, Sp.md)
-                .padding(.bottom, 20)
+            RoundedRectangle(cornerRadius: 2).fill(Color.primary.opacity(0.12))
+                .frame(width: 32, height: 3).padding(.top, Sp.md).padding(.bottom, 20)
 
-            // Header
             HStack(spacing: 14) {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.nexoBlue.opacity(0.1))
+                RoundedRectangle(cornerRadius: 10).fill(Color.nexoBlue.opacity(0.1))
                     .frame(width: 52, height: 52)
                     .overlay {
                         Image(systemName: pin.material.icon)
-                            .font(.system(size: 20, weight: .light))
-                            .foregroundStyle(Color.nexoBlue)
+                            .font(.system(size: 20, weight: .light)).foregroundStyle(Color.nexoBlue)
                     }
-
                 VStack(alignment: .leading, spacing: 4) {
                     Text(pin.material.displayName)
-                        .font(.system(size: 20, weight: .black))
-                        .tracking(-1)
-
+                        .font(.system(size: 20, weight: .black)).tracking(-1)
                     HStack(spacing: 6) {
-                        Image(systemName: "building.2.fill")
-                            .font(.system(size: 9))
-                        Text("Lote empresarial")
-                            .font(.system(size: 11, weight: .medium))
-                    }
-                    .foregroundStyle(Color.nexoBlue)
+                        Image(systemName: "building.2.fill").font(.system(size: 9))
+                        Text("Lote empresarial").font(.system(size: 11, weight: .medium))
+                    }.foregroundStyle(Color.nexoBlue)
                 }
                 Spacer()
-
-                // Badge grande de lote
                 VStack(spacing: 2) {
-                    Image(systemName: "shippingbox.fill")
-                        .font(.system(size: 16))
-                        .foregroundStyle(Color.nexoBlue)
-                    Text("LOTE")
-                        .font(.system(size: 8, weight: .black))
-                        .tracking(0.8)
-                        .foregroundStyle(Color.nexoBlue)
+                    Image(systemName: "shippingbox.fill").font(.system(size: 16)).foregroundStyle(Color.nexoBlue)
+                    Text("LOTE").font(.system(size: 8, weight: .black)).tracking(0.8).foregroundStyle(Color.nexoBlue)
                 }
-                .padding(10)
-                .background(Color.nexoBlue.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                .padding(10).background(Color.nexoBlue.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
             }
-            .padding(.horizontal, Sp.lg)
-            .padding(.bottom, Sp.md)
+            .padding(.horizontal, Sp.lg).padding(.bottom, Sp.md)
 
             Rectangle().fill(Color.primary.opacity(0.06)).frame(height: 0.5)
 
-            // Cantidad y frecuencia
             if let kg = pin.kgLabel {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Cantidad · Frecuencia")
-                            .font(.system(size: 9, weight: .semibold))
-                            .tracking(1.5)
-                            .textCase(.uppercase)
+                            .font(.system(size: 9, weight: .semibold)).tracking(1.5).textCase(.uppercase)
                             .foregroundStyle(Color.secondary)
                         Text(kg)
-                            .font(.system(size: 22, weight: .black))
-                            .tracking(-1)
-                            .foregroundStyle(Color.nexoBlue)
+                            .font(.system(size: 22, weight: .black)).tracking(-1).foregroundStyle(Color.nexoBlue)
                     }
                     Spacer()
                 }
-                .padding(.horizontal, Sp.lg)
-                .padding(.vertical, 16)
-
+                .padding(.horizontal, Sp.lg).padding(.vertical, 16)
                 Rectangle().fill(Color.primary.opacity(0.06)).frame(height: 0.5)
             }
 
-            // Ruta de disposición
             HStack(spacing: 8) {
-                Image(systemName: pin.material.route.icon)
-                    .font(.system(size: 11))
-                Text("Ruta: \(pin.material.route.rawValue)")
-                    .font(.system(size: 13, weight: .light))
+                Image(systemName: pin.material.route.icon).font(.system(size: 11))
+                Text("Ruta: \(pin.material.route.rawValue)").font(.system(size: 13, weight: .light))
                 Spacer()
             }
             .foregroundStyle(pin.material.route.color)
-            .padding(.horizontal, Sp.lg)
-            .padding(.vertical, 14)
+            .padding(.horizontal, Sp.lg).padding(.vertical, 14)
 
             Rectangle().fill(Color.primary.opacity(0.06)).frame(height: 0.5)
 
-            // Diferenciador empresarial
             VStack(alignment: .leading, spacing: 10) {
                 Text("¿Por qué este lote?")
-                    .font(.system(size: 9, weight: .semibold))
-                    .tracking(1.5)
-                    .textCase(.uppercase)
+                    .font(.system(size: 9, weight: .semibold)).tracking(1.5).textCase(.uppercase)
                     .foregroundStyle(Color.secondary)
-
                 HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "scalemass.fill")
-                        .font(.system(size: 11))
-                        .foregroundStyle(Color.nexoGreen)
+                    Image(systemName: "scalemass.fill").font(.system(size: 11)).foregroundStyle(Color.nexoGreen)
                     Text("Volumen industrial — se requiere gestor certificado, no recolector individual.")
-                        .font(.system(size: 13, weight: .light))
-                        .foregroundStyle(Color.primary.opacity(0.7))
+                        .font(.system(size: 13, weight: .light)).foregroundStyle(Color.primary.opacity(0.7))
                 }
                 HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "repeat")
-                        .font(.system(size: 11))
-                        .foregroundStyle(Color.nexoGreen)
+                    Image(systemName: "repeat").font(.system(size: 11)).foregroundStyle(Color.nexoGreen)
                     Text("Generación recurrente — oportunidad de contrato a largo plazo.")
-                        .font(.system(size: 13, weight: .light))
-                        .foregroundStyle(Color.primary.opacity(0.7))
+                        .font(.system(size: 13, weight: .light)).foregroundStyle(Color.primary.opacity(0.7))
                 }
             }
-            .padding(.horizontal, Sp.lg)
-            .padding(.vertical, 16)
+            .padding(.horizontal, Sp.lg).padding(.vertical, 16)
 
             Spacer()
 
-            // CTA
             Button { isPresented = false } label: {
-                Text("Cerrar")
-                    .font(.system(size: 12, weight: .semibold))
+                Text("Cerrar").font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Color.primary.opacity(0.5))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
+                    .frame(maxWidth: .infinity).frame(height: 44)
                     .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: Rd.sm))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Rd.sm)
-                            .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
-                    )
+                    .overlay(RoundedRectangle(cornerRadius: Rd.sm)
+                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
             }
-            .padding(.horizontal, Sp.lg)
-            .padding(.bottom, 32)
+            .padding(.horizontal, Sp.lg).padding(.bottom, 32)
         }
         .presentationDetents([.medium, .large])
     }
 }
 
-#Preview("Mapa con fichas de ejemplo") {
-    MapView()
-}
+#Preview("Mapa con fichas de ejemplo") { MapView() }
