@@ -14,6 +14,7 @@
 
 import SwiftUI
 import UserNotifications
+import SwiftData
 
 struct OrganicFichaView: View {
     let material   : NEXOMaterial
