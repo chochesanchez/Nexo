@@ -1,7 +1,3 @@
-// HistorialView.swift
-// Agrega escritura a App Group UserDefaults para que el widget
-// muestre datos reales en lugar de 0.
-
 import SwiftUI
 import SwiftData
 import WidgetKit
@@ -24,23 +20,29 @@ final class FichaRegistro {
         self.co2         = material.co2
         self.water       = material.water
         self.fecha       = Date()
-        // Escribe al App Group para que el widget se actualice
         HistorialView.writeWidgetData()
     }
 }
 
 struct HistorialView: View {
+    @EnvironmentObject private var repo: ListingsRepository
     @Query(sort: \FichaRegistro.fecha, order: .reverse) private var registros: [FichaRegistro]
     @Environment(\.modelContext) private var context
+
+    private var useRemote: Bool { !repo.history.isEmpty }
 
     var body: some View {
         NavigationStack {
             Group {
-                if registros.isEmpty { emptyState }
-                else {
+                if repo.history.isEmpty && registros.isEmpty {
+                    emptyState
+                } else {
                     ScrollView {
-                        VStack(spacing: Sp.md) { impactSummary; listadoRegistros }
-                            .padding(Sp.lg)
+                        VStack(spacing: Sp.md) {
+                            impactSummary
+                            if useRemote { remoteList } else { listadoRegistros }
+                        }
+                        .padding(Sp.lg)
                     }
                 }
             }
@@ -55,26 +57,23 @@ struct HistorialView: View {
                             WidgetCenter.shared.reloadAllTimelines()
                         } label: {
                             Image(systemName: "trash").foregroundStyle(.red)
-                        }.accessibilityLabel("Borrar historial")
+                        }.accessibilityLabel("Borrar historial local")
                     }
                 }
             }
-            .onChange(of: registros.count) { _ in
-                Self.writeWidgetData(count: registros.count, co2: co2Total)
+            .task { await repo.fetchHistory() }
+            .onChange(of: registros.count) { _, _ in
+                Self.writeWidgetData(count: registros.count, co2: co2TotalLocal)
                 WidgetCenter.shared.reloadAllTimelines()
             }
         }
     }
-
-    // MARK: - Escribe datos al App Group para el widget
 
     static func writeWidgetData(count: Int? = nil, co2: String? = nil) {
         let defaults = UserDefaults(suiteName: "group.com.nexo.app")
         if let count { defaults?.set(count, forKey: "nexo_materiales_semana") }
         if let co2   { defaults?.set(co2,   forKey: "nexo_co2_semana") }
     }
-
-    // MARK: - Empty State
 
     private var emptyState: some View {
         VStack(spacing: Sp.lg) {
@@ -89,8 +88,6 @@ struct HistorialView: View {
         }
     }
 
-    // MARK: - Impact Summary
-
     private var impactSummary: some View {
         VStack(alignment: .leading, spacing: Sp.md) {
             Text("Esta semana")
@@ -98,9 +95,11 @@ struct HistorialView: View {
                 .textCase(.uppercase).kerning(0.6)
             HStack(spacing: Sp.sm) {
                 summaryCell(icon: "arrow.3.trianglepath", label: "Materiales",
-                            value: "\(registros.count)", color: Color.nexoGreen)
+                            value: "\(useRemote ? repo.history.count : registros.count)",
+                            color: Color.nexoGreen)
                 summaryCell(icon: "wind", label: "CO₂ evitado",
-                            value: co2Total, color: Color(hex: "6DB33F"))
+                            value: useRemote ? co2TotalRemote : co2TotalLocal,
+                            color: Color(hex: "6DB33F"))
             }
         }
     }
@@ -119,7 +118,70 @@ struct HistorialView: View {
         .accessibilityElement(children: .combine).accessibilityLabel("\(label): \(value)")
     }
 
-    // MARK: - Lista de registros
+    private var remoteList: some View {
+        VStack(alignment: .leading, spacing: Sp.sm) {
+            Text("Registros")
+                .font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+                .textCase(.uppercase).kerning(0.6)
+            VStack(spacing: Sp.xs) {
+                ForEach(repo.history) { record in remoteRow(record) }
+            }
+        }
+    }
+
+    private func remoteRow(_ record: ScanRecord) -> some View {
+        let fallback = NEXOMaterial.from(supabaseMaterial: record.material)
+        let iconName = record.icon ?? fallback?.icon ?? "leaf.fill"
+        let title    = record.displayName ?? record.material
+        let routeStr = record.route ?? fallback?.route.rawValue ?? "Reciclaje"
+        let co2Str   = record.co2 ?? fallback?.co2
+        let valStr   = record.value ?? fallback?.value
+        return HStack(spacing: Sp.md) {
+            if let urlStr = record.imageUrl, let url = URL(string: urlStr) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let img):
+                        img.resizable().scaledToFill()
+                            .frame(width: 44, height: 44).clipShape(Circle())
+                    default:
+                        Circle().fill(Color.nexoGreen.opacity(0.15)).frame(width: 44, height: 44)
+                            .overlay(Image(systemName: iconName)
+                                .font(.system(size: 18)).foregroundStyle(Color.nexoGreen))
+                    }
+                }
+            } else {
+                ZStack {
+                    Circle().fill(Color.nexoGreen.opacity(0.15)).frame(width: 44, height: 44)
+                    Image(systemName: iconName)
+                        .font(.system(size: 18)).foregroundStyle(Color.nexoGreen)
+                }
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                HStack(spacing: 6) {
+                    Text(routeStr)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    if let co2 = co2Str {
+                        Text("·").foregroundStyle(.secondary)
+                        Text(co2).font(.system(size: 12)).foregroundStyle(Color.nexoGreen)
+                    }
+                    if let v = valStr {
+                        Text("·").foregroundStyle(.secondary)
+                        Text(v).font(.system(size: 12)).foregroundStyle(Color.nexoAmber)
+                    }
+                }
+            }
+            Spacer()
+            Text(record.createdAt, style: .date)
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+        }
+        .padding(Sp.md)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: Rd.md))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title), \(routeStr), \(record.createdAt.formatted(date: .abbreviated, time: .omitted))")
+    }
 
     private var listadoRegistros: some View {
         VStack(alignment: .leading, spacing: Sp.sm) {
@@ -149,14 +211,20 @@ struct HistorialView: View {
         .accessibilityLabel("\(reg.displayName), \(reg.route), \(reg.fecha.formatted(date: .abbreviated, time: .omitted))")
     }
 
-    // MARK: - CO₂ total
-
-    var co2Total: String {
-        let nums = registros.compactMap { reg -> Double? in
+    var co2TotalLocal: String {
+        let total = registros.compactMap { reg -> Double? in
             let digits = reg.co2.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
             return Double(digits)
-        }
-        let total = nums.reduce(0, +)
+        }.reduce(0, +)
+        return total >= 1000 ? String(format: "%.1f kg", total / 1000) : "\(Int(total)) g"
+    }
+
+    private var co2TotalRemote: String {
+        let total = repo.history.compactMap { record -> Double? in
+            guard let mat = NEXOMaterial.from(supabaseMaterial: record.material) else { return nil }
+            let digits = mat.co2.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
+            return Double(digits)
+        }.reduce(0, +)
         return total >= 1000 ? String(format: "%.1f kg", total / 1000) : "\(Int(total)) g"
     }
 }

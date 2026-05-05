@@ -31,10 +31,11 @@ struct CameraPreview: UIViewRepresentable {
 
 final class CameraManager: NSObject, ObservableObject {
 
-    @Published var detectedMaterial : NEXOMaterial? = nil
-    @Published var detectedOCRText  : String?       = nil   // ← texto leído de etiquetas
-    @Published var isAnalyzing      : Bool          = false
-    @Published var errorMessage     : String?       = nil
+    @Published var detectedMaterial  : NEXOMaterial? = nil
+    @Published var detectedOCRText   : String?       = nil
+    @Published var capturedImageData : Data?          = nil
+    @Published var isAnalyzing       : Bool           = false
+    @Published var errorMessage      : String?        = nil
 
     let session     = AVCaptureSession()
     private let out = AVCapturePhotoOutput()
@@ -159,6 +160,7 @@ extension CameraManager: AVCapturePhotoCaptureDelegate {
             DispatchQueue.main.async { self.isAnalyzing = false }
             return
         }
+        DispatchQueue.main.async { self.capturedImageData = data }
         analyze(data: data)
     }
 }

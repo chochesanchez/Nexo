@@ -38,11 +38,13 @@ extension SpeechManager: AVSpeechSynthesizerDelegate {
 struct FichaView: View {
     let material   : NEXOMaterial
     let ocrText    : String?
+    var imageData  : Data? = nil
     @Binding var isPresented: Bool
 
     @Environment(\.modelContext) private var context
     @EnvironmentObject private var repo     : ListingsRepository
     @EnvironmentObject private var location : LocationManager
+    @EnvironmentObject private var auth     : AuthService
 
     // @ObservedObject (no @StateObject) porque es un singleton externo
     @ObservedObject private var fmService = FoundationModelsService.shared
@@ -99,16 +101,53 @@ struct FichaView: View {
         guard !compartida else { return }
         if !location.isAvailable { location.requestWhenInUse() }
         isPublishing = true
+        let localImageData = imageData
         Task {
             let coord = location.anonymizedCoordinate
                      ?? location.coordinate
                      ?? CLLocationCoordinate2D(latitude: 19.4326, longitude: -99.1332)
+
+            var uploadedImageUrl: String? = nil
+            if let data = localImageData, let userId = auth.currentUserId {
+                uploadedImageUrl = try? await StorageService.shared.uploadScanImage(data, userId: userId)
+            }
+
+            if let userId = auth.currentUserId {
+                let record = NewScanRecord(
+                    userId        : userId,
+                    material      : material.displayName,
+                    imageUrl      : uploadedImageUrl,
+                    ocrText       : ocrText,
+                    lat           : coord.latitude,
+                    lng           : coord.longitude,
+                    classKey      : material.classKey,
+                    displayName   : material.displayName,
+                    icon          : material.icon,
+                    route         : material.route.rawValue,
+                    co2           : material.co2,
+                    water         : material.water,
+                    value         : material.value,
+                    smellTip      : material.smellTip,
+                    instructions  : material.instructions,
+                    fmInstruction : instruccionFM
+                )
+                await repo.insertScanRecord(record)
+            }
+
             let nuevo = NewListing(
                 material      : material.displayName,
                 quantityLabel : "1 unidad",
                 notes         : instruccionFM ?? material.instructions.joined(separator: ". "),
                 lat           : coord.latitude,
-                lng           : coord.longitude
+                lng           : coord.longitude,
+                classKey      : material.classKey,
+                displayName   : material.displayName,
+                icon          : material.icon,
+                route         : material.route.rawValue,
+                co2           : material.co2,
+                water         : material.water,
+                value         : material.value,
+                fmInstruction : instruccionFM
             )
             let ok = await repo.publish(nuevo)
             isPublishing = false

@@ -7,9 +7,11 @@ struct NewProfile: Encodable {
     let telefono: String
     let correo: String
     let edad: Int
+    let avatarUrl: String?
 
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
         case nombre, apellido, telefono, correo, edad
+        case avatarUrl = "avatar_url"
     }
 }

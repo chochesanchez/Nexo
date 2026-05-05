@@ -39,11 +39,13 @@ struct ScannerView: View {
                 FichaView(
                     material    : mat,
                     ocrText     : camera.detectedOCRText,
+                    imageData   : camera.capturedImageData,
                     isPresented : $showFicha
                 )
                 .onDisappear {
-                    camera.detectedMaterial = nil
-                    camera.detectedOCRText  = nil
+                    camera.detectedMaterial  = nil
+                    camera.detectedOCRText   = nil
+                    camera.capturedImageData = nil
                 }
             }
         }
