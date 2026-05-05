@@ -10,13 +10,15 @@ import SwiftData
 
 @main
 struct nexoApp: App {
+
+    @StateObject private var repo     = ListingsRepository()
+    @StateObject private var location = LocationManager.shared
+
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .onOpenURL { url in
-                    if url.host == "scan"     { NotificationCenter.default.post(name: .nexoOpenScanner,   object: nil) }
-                    if url.host == "historial"{ NotificationCenter.default.post(name: .nexoOpenHistorial, object: nil) }
-                }
+                .environmentObject(repo)
+                .environmentObject(location)
         }
         .modelContainer(for: FichaRegistro.self)
     }
